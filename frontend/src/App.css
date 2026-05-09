@@ -1,0 +1,191 @@
+.AppShell {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.TopBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 18px;
+}
+
+.TopBarTitle {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 18px;
+}
+
+.TopBarSubtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.Layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .Layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.Left,
+.Right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.Card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.CardHeader {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.CardTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.CardSubtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.Form {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.FieldLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.Input {
+  width: 100%;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  padding: 10px 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.Input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.Button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.Button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.Error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.StopsList {
+  padding: 8px 8px 10px;
+}
+
+.StopRow {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.StopRow:nth-child(odd) {
+  background: #f8fafc;
+}
+
+.StopType {
+  font-size: 12px;
+  font-weight: 900;
+  color: #1f2937;
+}
+
+.StopLoc {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.StopMeta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.Dot {
+  opacity: 0.6;
+}
+
+.MapWrap {
+  padding: 10px;
+}
+
+.CanvasWrap {
+  padding: 10px 10px 14px;
+}
+
+.Stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.EmptyState {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 18px;
+  color: #64748b;
+  font-size: 14px;
+}
