@@ -34,7 +34,7 @@ SECRET_KEY = 'django-insecure-evn3yq2+ws%p=a!s294i0)pox+^n&64k908j93ha(=$7z%@xm8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # CORS (for React frontend later)
 # Requires `django-cors-headers` installed.
