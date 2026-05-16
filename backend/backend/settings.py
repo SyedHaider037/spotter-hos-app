@@ -38,15 +38,13 @@ ALLOWED_HOSTS = ['*']
 
 # CORS (for React frontend later)
 # Requires `django-cors-headers` installed.
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://spotter-hos-nwlz5x52h-haider-ali-projects2.vercel.app",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://spotter-hos-app.vercel.app",
+    "https://spotter-hos-nxap4wn0h-haider-ali-projects2.vercel.app",
 ]
 
 
