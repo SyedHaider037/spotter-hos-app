@@ -139,7 +139,7 @@ curl -s -X POST https://spotter-hos-app-production.up.railway.app/api/plan/ \
     "current_location": "Chicago, IL",
     "pickup_location": "Dallas, TX",
     "dropoff_location": "New York, NY",
-    "cycle_used_hours": 40
+    "cycle_used_hours": 20
   }'
 ```
 
