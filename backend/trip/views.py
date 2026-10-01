@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from rest_framework import status
@@ -8,6 +9,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from .services.trip_planner import TripPlannerError, plan_trip
+
+logger = logging.getLogger(__name__)
 
 
 def _get_required_str(data: dict[str, Any], key: str) -> str:
@@ -63,6 +66,7 @@ def plan(request: Request) -> Response:
             status=status.HTTP_400_BAD_REQUEST,
         )
     except Exception:
+        logger.exception("Unexpected error while planning trip")
         return Response(
             {"error": {"code": "INTERNAL_ERROR", "message": "Unexpected server error."}},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
