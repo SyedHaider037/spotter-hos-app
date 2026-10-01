@@ -312,7 +312,7 @@ def plan_trip(
         remaining_break = hos_rules.BREAK_AFTER_HOURS - driving_since_break
         return max(0.0, min(remaining_shift, remaining_drive, remaining_break))
 
-    def drive_for(leg: _Leg, hours: float, start_miles_into_leg: float) -> float:
+    def drive_for(leg: _Leg, hours: float) -> float:
         """
         Drive `hours` on the given leg, updating logs/stops state and returning miles driven.
         """
@@ -384,7 +384,7 @@ def plan_trip(
             hours_to_destination = miles_remaining / mph
             hours = min(max_hours, hours_to_destination)
 
-            miles = drive_for(leg, hours, miles_into_leg)
+            miles = drive_for(leg, hours)
             miles_into_leg += miles
             miles_remaining = max(0.0, leg.distance_miles - miles_into_leg)
 
