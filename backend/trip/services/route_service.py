@@ -12,10 +12,10 @@ This module does ONE thing:
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 import requests
+from django.conf import settings
 
 
 METERS_PER_MILE = 1609.344
@@ -37,7 +37,7 @@ class RouteResult:
 
 
 def _ors_api_key() -> str:
-    api_key = os.getenv("ORS_API_KEY")
+    api_key = settings.ORS_API_KEY
     if not api_key:
         raise RouteServiceError("Missing ORS_API_KEY environment variable.")
     return api_key
@@ -73,12 +73,31 @@ def geocode(location_string: str, *, timeout_seconds: float = 15.0) -> tuple[flo
     return lng, lat
 
 
-def get_route(origin: str, destination: str, *, timeout_seconds: float = 30.0) -> RouteResult:
+def _geocode_cached(
+    location: str, timeout_seconds: float, cache: dict[str, tuple[float, float]] | None
+) -> tuple[float, float]:
+    """Geocode `location`, reusing/storing the result in `cache` when one is supplied."""
+    if cache is None:
+        return geocode(location, timeout_seconds=timeout_seconds)
+    if location not in cache:
+        cache[location] = geocode(location, timeout_seconds=timeout_seconds)
+    return cache[location]
+
+
+def get_route(
+    origin: str,
+    destination: str,
+    *,
+    timeout_seconds: float = 30.0,
+    geocode_cache: dict[str, tuple[float, float]] | None = None,
+) -> RouteResult:
     """
     Step 2: Get directions using coordinates.
+
+    Pass the same `geocode_cache` dict across calls to geocode each distinct location only once.
     """
-    lng1, lat1 = geocode(origin, timeout_seconds=timeout_seconds)
-    lng2, lat2 = geocode(destination, timeout_seconds=timeout_seconds)
+    lng1, lat1 = _geocode_cached(origin, timeout_seconds, geocode_cache)
+    lng2, lat2 = _geocode_cached(destination, timeout_seconds, geocode_cache)
 
     headers = {"Authorization": _ors_api_key(), "Content-Type": "application/json"}
     body = {

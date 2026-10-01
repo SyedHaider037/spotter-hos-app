@@ -196,9 +196,11 @@ def _add_stop(
     )
 
 
-def _build_leg(origin_label: str, destination_label: str) -> _Leg:
+def _build_leg(
+    origin_label: str, destination_label: str, geocode_cache: dict[str, tuple[float, float]]
+) -> _Leg:
     try:
-        route = get_route(origin_label, destination_label)
+        route = get_route(origin_label, destination_label, geocode_cache=geocode_cache)
     except RouteServiceError as exc:
         raise TripPlannerError(str(exc)) from exc
 
@@ -235,9 +237,11 @@ def plan_trip(
     # Clock starts "now" in UTC unless the caller supplies a start time.
     now = start_time if start_time is not None else datetime.now(timezone.utc)
 
+    # Shared across legs so the pickup location is geocoded only once.
+    geocode_cache: dict[str, tuple[float, float]] = {}
     legs = [
-        _build_leg(current_location, pickup_location),
-        _build_leg(pickup_location, dropoff_location),
+        _build_leg(current_location, pickup_location, geocode_cache),
+        _build_leg(pickup_location, dropoff_location, geocode_cache),
     ]
 
     stops: list[Stop] = []
