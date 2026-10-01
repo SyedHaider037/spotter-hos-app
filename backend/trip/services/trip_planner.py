@@ -218,19 +218,22 @@ def plan_trip(
     pickup_location: str,
     dropoff_location: str,
     cycle_used_hours: float,
+    start_time: datetime | None = None,
 ) -> dict[str, Any]:
     """
     Simulate the trip and return:
       - stops: list[Stop]
       - daily_logs: list[DailyLog]
+
+    `start_time` (timezone-aware) defaults to the current UTC time; pass it for deterministic output.
     """
     if cycle_used_hours < 0:
         raise TripPlannerError("cycle_used_hours must be >= 0.")
     if hos_rules.cycle_limit_reached(cycle_used_hours):
         raise TripPlannerError("Cycle limit already reached; cannot plan trip.")
 
-    # Clock starts "now" in UTC for deterministic formatting (caller can override later by shifting times).
-    now = datetime.now(timezone.utc)
+    # Clock starts "now" in UTC unless the caller supplies a start time.
+    now = start_time if start_time is not None else datetime.now(timezone.utc)
 
     legs = [
         _build_leg(current_location, pickup_location),

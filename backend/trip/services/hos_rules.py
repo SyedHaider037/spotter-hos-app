@@ -29,19 +29,9 @@ def driving_limit_reached(driving_hours_today: float) -> bool:
     return driving_hours_today >= MAX_DRIVING_HOURS
 
 
-def shift_window_exceeded(shift_hours_elapsed: float) -> bool:
-    """True if the 14-hour shift window has been exceeded."""
-    return shift_hours_elapsed > MAX_SHIFT_HOURS
-
-
 def shift_window_reached(shift_hours_elapsed: float) -> bool:
     """True if the 14-hour shift window has been reached/exceeded."""
     return shift_hours_elapsed >= MAX_SHIFT_HOURS
-
-
-def rest_requirement_met(rest_hours: float) -> bool:
-    """True if the minimum rest requirement has been met."""
-    return rest_hours >= MIN_REST_HOURS
 
 
 def break_required(cumulative_driving_hours_since_break: float) -> bool:
