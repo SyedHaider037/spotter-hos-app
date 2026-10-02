@@ -216,7 +216,7 @@ Two approaches:
 - Frontend: static build served via CDN or same reverse proxy
 - Environment variables:
   - `ORS_API_KEY`
-  - `DJANGO_SECRET_KEY`, `DATABASE_URL` (if persistence later)
+  - `DJANGO_SECRET_KEY` (a database connection variable would only be added if persistence is introduced later)
 
 ---
 

@@ -226,7 +226,7 @@ The planner applies these constraints (see `backend/trip/services/hos_rules.py` 
 
 **Backend (Railway)**
 
-- Set environment variables: `ORS_API_KEY`, `DJANGO_SECRET_KEY`, `ALLOWED_HOSTS`, and database URL if you move beyond SQLite.
+- Set environment variables: `ORS_API_KEY`, `DJANGO_SECRET_KEY`, `ALLOWED_HOSTS`. This app currently uses SQLite with no persistent data; no external database is required.
 - Use **Gunicorn** as the process command (see `requirements.txt`).
 
 **Frontend (Vercel)**
