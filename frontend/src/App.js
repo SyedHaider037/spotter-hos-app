@@ -4,6 +4,11 @@ import React, { useMemo, useState } from 'react';
 import EldLogCanvas from './components/EldLogCanvas';
 import TripMap from './components/TripMap';
 
+// Backend base URL. Override with REACT_APP_API_URL (e.g. http://localhost:8000 for local dev).
+const API_URL = (
+  process.env.REACT_APP_API_URL || 'https://spotter-hos-app-e2aab.containers.snapdeploy.app'
+).replace(/\/+$/, '');
+
 function formatDurationMinutes(mins) {
   const n = Number(mins);
   if (!Number.isFinite(n)) return '';
@@ -53,7 +58,7 @@ function App() {
 
     setLoading(true);
     try {
-      const resp = await fetch('https://spotter-hos-app-e2aab.containers.snapdeploy.app/api/plan/', {
+      const resp = await fetch(`${API_URL}/api/plan/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
