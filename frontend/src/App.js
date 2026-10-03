@@ -28,7 +28,7 @@ function App() {
   const [currentLocation, setCurrentLocation] = useState('Chicago, IL');
   const [pickupLocation, setPickupLocation] = useState('Dallas, TX');
   const [dropoffLocation, setDropoffLocation] = useState('New York, NY');
-  const [cycleUsedHours, setCycleUsedHours] = useState(40);
+  const [cycleUsedHours, setCycleUsedHours] = useState(20);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
