@@ -53,7 +53,7 @@ function App() {
 
     setLoading(true);
     try {
-      const resp = await fetch('https://spotter-hos-app-production.up.railway.app/api/plan/', {
+      const resp = await fetch('https://spotter-hos-app-e2aab.containers.snapdeploy.app/api/plan/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
