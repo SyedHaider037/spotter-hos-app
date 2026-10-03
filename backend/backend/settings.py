@@ -49,12 +49,6 @@ ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 # CORS: explicit allowlist. The API is stateless and the frontend sends no credentials.
 # Requires `django-cors-headers` installed.
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://spotter-hos-app.vercel.app",
-    "https://spotter-hos-nxap4wn0h-haider-ali-projects2.vercel.app",
-]
 
 
 # Application definition
