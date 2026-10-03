@@ -1,5 +1,5 @@
 import './App.css';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import EldLogCanvas from './components/EldLogCanvas';
 import TripMap from './components/TripMap';
@@ -8,6 +8,9 @@ import TripMap from './components/TripMap';
 const API_URL = (
   process.env.REACT_APP_API_URL || 'https://spotter-hos-app-e2aab.containers.snapdeploy.app'
 ).replace(/\/+$/, '');
+
+// A normal request takes several seconds; past this, the free-tier backend is probably waking from idle.
+const WAKE_NOTICE_DELAY_MS = 15000;
 
 function formatDurationMinutes(mins) {
   const n = Number(mins);
@@ -33,6 +36,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [showWakeNotice, setShowWakeNotice] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setShowWakeNotice(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setShowWakeNotice(true), WAKE_NOTICE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const dailyLogs = result?.daily_logs || [];
   const stops = result?.stops || [];
@@ -148,6 +161,12 @@ function App() {
               <button className="Button" type="submit" disabled={!canSubmit || loading}>
                 {loading ? 'Planning…' : 'Plan Trip'}
               </button>
+
+              {showWakeNotice ? (
+                <div className="Notice" role="status">
+                  Waking up the server — this can take up to a minute after it has been idle. Thanks for waiting!
+                </div>
+              ) : null}
 
               {error ? <div className="Error">{error}</div> : null}
             </form>

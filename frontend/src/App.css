@@ -126,6 +126,15 @@
   font-size: 13px;
 }
 
+.Notice {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 13px;
+}
+
 .StopsList {
   padding: 8px 8px 10px;
 }
