@@ -1,5 +1,5 @@
 import './App.css';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import EldLogCanvas from './components/EldLogCanvas';
 import TripMap from './components/TripMap';
@@ -11,6 +11,44 @@ const API_URL = (
 
 // A normal request takes several seconds; past this, the free-tier backend is probably waking from idle.
 const WAKE_NOTICE_DELAY_MS = 15000;
+
+// Cold-start handling for the free-tier backend (it boots in roughly a minute after sleeping).
+const REQUEST_TIMEOUT_MS = 30000; // per attempt; a normal warm request finishes in ~8-14s
+const RETRY_DELAY_MS = 10000;
+const MAX_ATTEMPTS = 7; // first try + 6 retries, ~60s of waiting in total
+
+// Connectivity-class failure (network error, timeout, platform "waking up" page); safe to retry.
+class RetryableError extends Error {}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function postPlan(payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    let resp;
+    try {
+      resp = await fetch(`${API_URL}/api/plan/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      throw new RetryableError(err?.name === 'AbortError' ? 'Request timed out.' : err?.message || 'Failed to fetch');
+    }
+
+    const data = await resp.json().catch(() => null);
+    if (resp.ok) return data;
+
+    const message = data?.error?.message || data?.detail;
+    // A JSON error body means the app itself answered; anything else (e.g. a 503 HTML page) is the platform.
+    if (message) throw new Error(message);
+    throw new RetryableError(`Request failed (${resp.status})`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function formatDurationMinutes(mins) {
   const n = Number(mins);
@@ -37,6 +75,16 @@ function App() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [showWakeNotice, setShowWakeNotice] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0); // failed attempts so far during a cold-start retry
+  const serverReached = useRef(false); // true once the API has answered at all
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -69,39 +117,60 @@ function App() {
       return;
     }
 
+    const payload = {
+      current_location: currentLocation,
+      pickup_location: pickupLocation,
+      dropoff_location: dropoffLocation,
+      cycle_used_hours: Number(cycleUsedHours),
+    };
+
     setLoading(true);
     try {
-      const resp = await fetch(`${API_URL}/api/plan/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current_location: currentLocation,
-          pickup_location: pickupLocation,
-          dropoff_location: dropoffLocation,
-          cycle_used_hours: Number(cycleUsedHours),
-        }),
-      });
-
-      const data = await resp.json().catch(() => null);
-
-      if (!resp.ok) {
-        const message =
-          data?.error?.message ||
-          data?.detail ||
-          `Request failed (${resp.status})`;
-        throw new Error(message);
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          const data = await postPlan(payload);
+          serverReached.current = true;
+          setResult(data);
+          return;
+        } catch (err) {
+          if (!(err instanceof RetryableError)) {
+            serverReached.current = true;
+            throw err;
+          }
+          // Only a server we have never reached can be mid-boot; otherwise report the failure right away.
+          if (serverReached.current) throw err;
+          if (attempt >= MAX_ATTEMPTS) {
+            throw new Error(`The server did not start in time (${err.message}). Please try again in a moment.`);
+          }
+          setRetryAttempt(attempt);
+          await sleep(RETRY_DELAY_MS);
+          if (!mounted.current) return;
+        }
       }
-
-      setResult(data);
     } catch (err) {
       setError(err?.message || 'Failed to plan trip.');
     } finally {
-      setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+        setRetryAttempt(0);
+      }
     }
   }
 
   return (
     <div className="AppShell">
+      {/*
+        Cold-start wake trigger. The free-tier host only wakes a sleeping container when a real browser
+        loads its page (the wake page runs its own script); fetch/XHR never does. This hidden iframe loads
+        the bare backend URL once on page load. Its content is never used.
+      */}
+      <iframe
+        src={`${API_URL}/`}
+        title="Backend wake-up"
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{ position: 'absolute', width: 0, height: 0, border: 0, visibility: 'hidden' }}
+      />
       <div className="TopBar">
         <div className="TopBarTitle">HOS Trip Planner</div>
         <div className="TopBarSubtitle">Stops + ELD log sheets</div>
@@ -162,7 +231,12 @@ function App() {
                 {loading ? 'Planning…' : 'Plan Trip'}
               </button>
 
-              {showWakeNotice ? (
+              {retryAttempt > 0 ? (
+                <div className="Notice" role="status">
+                  Starting up the server, this can take up to a minute... Retrying automatically (attempt{' '}
+                  {retryAttempt + 1} of {MAX_ATTEMPTS}).
+                </div>
+              ) : showWakeNotice ? (
                 <div className="Notice" role="status">
                   Waking up the server — this can take up to a minute after it has been idle. Thanks for waiting!
                 </div>
