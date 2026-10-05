@@ -5,6 +5,7 @@ from typing import Any
 
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import ParseError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -63,6 +64,13 @@ def plan(request: Request) -> Response:
     except TripPlannerError as exc:
         return Response(
             {"error": {"code": "PLAN_FAILED", "message": str(exc)}},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except ParseError as exc:
+        # A body that is not valid JSON (including NaN / Infinity, which DRF's strict parser rejects) is the
+        # client's mistake, not a server error.
+        return Response(
+            {"error": {"code": "PLAN_FAILED", "message": f"Request body is not valid JSON ({exc.detail})."}},
             status=status.HTTP_400_BAD_REQUEST,
         )
     except Exception:
