@@ -47,7 +47,55 @@ class GeocodeReuseTests(SimpleTestCase):
         start = datetime(2026, 1, 5, 8, 0, tzinfo=timezone.utc)
         with mock.patch.object(route_service, "geocode", return_value=(-87.0, 41.0)) as geo, mock.patch.object(
             route_service, "_ors_api_key", return_value="k"
-        ), mock.patch.object(route_service.requests, "post", return_value=_directions_response()):
+        ), mock.patch.object(route_service.requests, "post", return_value=_directions_response()), mock.patch(
+            "trip.services.trip_planner.reverse_geocode", return_value="Testville, TS"
+        ):
             result = plan_trip("Chicago", "Dallas", "New York", 0, start_time=start)
         self.assertEqual([c.args[0] for c in geo.call_args_list], ["Chicago", "Dallas", "New York"])
         self.assertEqual(len(result["stops"]), 5)
+
+
+class ReverseGeocodeTests(SimpleTestCase):
+    def _response(self, props):
+        resp = mock.Mock()
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {"features": [{"properties": props}] if props is not None else []}
+        return resp
+
+    def _call(self, response=None, side_effect=None):
+        with mock.patch.object(route_service, "_ors_api_key", return_value="k"), mock.patch.object(
+            route_service.requests, "get", return_value=response, side_effect=side_effect
+        ) as get:
+            return route_service.reverse_geocode(34.14, -93.08), get
+
+    def test_returns_city_and_state(self):
+        result, get = self._call(self._response({"locality": "Arkadelphia", "region_a": "AR"}))
+        self.assertEqual(result, "Arkadelphia, AR")
+        params = get.call_args.kwargs["params"]
+        self.assertEqual((params["point.lat"], params["point.lon"]), (34.14, -93.08))
+
+    def test_falls_back_to_county_when_no_city_nearby(self):
+        result, _ = self._call(self._response({"county": "Crittenden County", "region_a": "AR"}))
+        self.assertEqual(result, "Crittenden County, AR")
+
+    def test_returns_none_when_nothing_found(self):
+        result, _ = self._call(self._response(None))
+        self.assertIsNone(result)
+
+    def test_never_raises_on_network_error(self):
+        result, _ = self._call(side_effect=route_service.requests.ConnectionError("down"))
+        self.assertIsNone(result)
+
+    def test_returns_none_on_invalid_json(self):
+        resp = mock.Mock()
+        resp.raise_for_status.return_value = None
+        resp.json.side_effect = ValueError("bad json")
+        result, _ = self._call(resp)
+        self.assertIsNone(result)
+
+    def test_returns_none_when_api_key_missing(self):
+        with mock.patch.object(
+            route_service, "_ors_api_key", side_effect=route_service.RouteServiceError("Missing")
+        ), mock.patch.object(route_service.requests, "get") as get:
+            self.assertIsNone(route_service.reverse_geocode(1.0, 2.0))
+        get.assert_not_called()

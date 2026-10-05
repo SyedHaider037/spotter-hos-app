@@ -223,8 +223,91 @@
   padding: 10px;
 }
 
-.CanvasWrap {
-  padding: 10px 10px 14px;
+.LogSheetBody {
+  padding: 10px 14px 14px;
+}
+
+.LogSheetSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.LogSheetTotal {
+  font-variant-numeric: tabular-nums;
+}
+
+.LogRemarks {
+  margin-top: 10px;
+  border-top: 1px solid #eef2f7;
+  padding-top: 10px;
+}
+
+.LogRemarksTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.LogRemarksList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.LogRemark {
+  display: grid;
+  grid-template-columns: 22px 52px minmax(120px, 1.1fr) 2fr;
+  column-gap: 10px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.LogRemarkNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.LogRemarkTime {
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+}
+
+.LogRemarkPlace {
+  font-weight: 700;
+}
+
+.LogRemarkActivity {
+  color: #0f172a;
+}
+
+.LogSheetNote {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+@media (max-width: 600px) {
+  .LogRemark {
+    grid-template-columns: 22px 48px 1fr;
+  }
+
+  .LogRemarkActivity {
+    grid-column: 3;
+  }
 }
 
 .Stack {

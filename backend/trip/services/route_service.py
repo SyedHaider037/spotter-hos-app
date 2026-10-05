@@ -73,6 +73,42 @@ def geocode(location_string: str, *, timeout_seconds: float = 15.0) -> tuple[flo
     return lng, lat
 
 
+REVERSE_GEOCODE_URL = "https://api.openrouteservice.org/geocode/reverse"
+
+
+def reverse_geocode(lat: float, lng: float, *, timeout_seconds: float = 10.0) -> str | None:
+    """
+    Best-effort "City, ST" label for a coordinate (falls back to "X County, ST").
+
+    Used only for labelling log remarks, so it never raises: any failure returns None.
+    """
+    params = {
+        "point.lat": lat,
+        "point.lon": lng,
+        "size": 1,
+        "layers": "locality,localadmin,county",
+        "boundary.circle.radius": 50,  # km
+    }
+    try:
+        resp = requests.get(
+            REVERSE_GEOCODE_URL,
+            headers={"Authorization": _ors_api_key()},
+            params=params,
+            timeout=timeout_seconds,
+        )
+        resp.raise_for_status()
+        features = resp.json().get("features") or []
+        props = (features[0].get("properties") or {}) if features else {}
+    except (requests.RequestException, ValueError, RouteServiceError):
+        return None
+
+    region = props.get("region_a") or props.get("region")
+    name = props.get("locality") or props.get("localadmin") or props.get("county")
+    if name and region:
+        return f"{name}, {region}"
+    return name or props.get("label") or None
+
+
 def _geocode_cached(
     location: str, timeout_seconds: float, cache: dict[str, tuple[float, float]] | None
 ) -> tuple[float, float]:

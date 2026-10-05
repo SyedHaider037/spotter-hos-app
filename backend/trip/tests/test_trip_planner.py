@@ -10,6 +10,7 @@ from trip.services.trip_planner import TripPlannerError, plan_trip
 
 START = datetime(2026, 1, 5, 8, 0, tzinfo=timezone.utc)  # Monday 08:00 UTC
 PATCH_TARGET = "trip.services.trip_planner.get_route"
+REVERSE_TARGET = "trip.services.trip_planner.reverse_geocode"
 
 
 def _encode_value(value: int) -> str:
@@ -34,8 +35,8 @@ def fake_route(miles: float, hours: float, start=(41.0, -87.0), end=(35.0, -90.0
     return RouteResult(distance_miles=miles, duration_hours=hours, polyline=encode_polyline([start, end]))
 
 
-def run_plan(legs, cycle_used_hours=0):
-    with mock.patch(PATCH_TARGET, side_effect=list(legs)):
+def run_plan(legs, cycle_used_hours=0, place="Testville, TS"):
+    with mock.patch(PATCH_TARGET, side_effect=list(legs)), mock.patch(REVERSE_TARGET, return_value=place):
         return plan_trip("A", "B", "C", cycle_used_hours, start_time=START)
 
 
@@ -64,6 +65,11 @@ def merged_segments(result):
         else:
             merged.append(dict(seg))
     return merged
+
+
+def merged_status_runs(result):
+    """Segments with adjacent same-status pieces joined, as {status, start, end} in trip order."""
+    return merged_segments(result)
 
 
 def total_hours(result, status):
@@ -167,7 +173,9 @@ class CycleLimitTests(SimpleTestCase):
             "dropoff_location": "C",
             "cycle_used_hours": 55,
         }
-        with mock.patch(PATCH_TARGET, side_effect=[fake_route(600, 10), fake_route(600, 10)]):
+        with mock.patch(PATCH_TARGET, side_effect=[fake_route(600, 10), fake_route(600, 10)]), mock.patch(
+            REVERSE_TARGET, return_value="Testville, TS"
+        ):
             response = self.client.post("/api/plan/", payload, content_type="application/json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"]["code"], "PLAN_FAILED")
@@ -210,12 +218,74 @@ class RouteGeometryTests(SimpleTestCase):
     def test_existing_response_keys_are_unchanged(self):
         result = run_plan([fake_route(120, 2), fake_route(120, 2)])
         self.assertEqual(set(result), {"stops", "daily_logs", "route"})
+        self.assertEqual(set(result["daily_logs"][0]), {"date", "segments", "remarks"})
 
     def test_api_response_includes_route(self):
         payload = {"current_location": "A", "pickup_location": "B", "dropoff_location": "C", "cycle_used_hours": 0}
-        with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]):
+        with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]), mock.patch(
+            REVERSE_TARGET, return_value="Testville, TS"
+        ):
             response = self.client.post("/api/plan/", payload, content_type="application/json")
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(len(body["route"]["legs"]), 2)
         self.assertTrue(all(isinstance(leg["polyline"], str) and leg["polyline"] for leg in body["route"]["legs"]))
+
+
+class RemarksTests(SimpleTestCase):
+    """Each duty-status change gets a remark (place + activity), grouped under the day it happened on."""
+
+    def setUp(self):
+        self.result = run_plan([fake_route(600, 10), fake_route(600, 10)])
+        self.remarks = [r for day in self.result["daily_logs"] for r in day["remarks"]]
+
+    def test_every_status_change_has_exactly_one_remark(self):
+        segs = merged_status_runs(self.result)
+        changes = [segs[i]["start"] for i in range(1, len(segs)) if segs[i]["status"] != segs[i - 1]["status"]]
+        # The trip start (driving begins) and trip end (on duty -> off duty) are changes on the sheet too.
+        expected = [segs[0]["start"], *changes, segs[-1]["end"]]
+        self.assertEqual([r["time"] for r in sorted(self.remarks, key=lambda r: r["time"])], expected)
+
+    def test_remarks_sit_on_the_day_they_happened(self):
+        for day in self.result["daily_logs"]:
+            for remark in day["remarks"]:
+                self.assertTrue(remark["time"].startswith(day["date"]) or remark["time"][:10] == day["date"])
+
+    def test_remarks_are_sorted_within_each_day(self):
+        for day in self.result["daily_logs"]:
+            times = [r["time"] for r in day["remarks"]]
+            self.assertEqual(times, sorted(times))
+
+    def test_start_pickup_and_dropoff_use_the_locations_as_typed(self):
+        by_activity = {r["activity"]: r["place"] for r in self.remarks}
+        self.assertEqual(by_activity["Start trip, driving"], "A")
+        self.assertEqual(by_activity["Pickup, loading (on duty)"], "B")
+        self.assertEqual(by_activity["Leave pickup, driving"], "B")
+        self.assertEqual(by_activity["Dropoff, unloading (on duty)"], "C")
+        self.assertEqual(by_activity["Trip complete (off duty)"], "C")
+
+    def test_rest_and_break_places_come_from_reverse_geocoding(self):
+        activities = {r["activity"]: r["place"] for r in self.remarks}
+        self.assertEqual(activities["10-hour rest (off duty)"], "Testville, TS")
+        self.assertEqual(activities["30-minute break (off duty)"], "Testville, TS")
+
+    def test_resume_driving_follows_each_rest_and_break(self):
+        resumes = [r for r in self.remarks if r["activity"] == "Resume driving"]
+        stops_needing_resume = len(stops_of(self.result, "REST_10")) + len(stops_of(self.result, "BREAK_30"))
+        self.assertEqual(len(resumes), stops_needing_resume)
+
+    def test_failed_reverse_geocode_falls_back_to_coordinates(self):
+        result = run_plan([fake_route(600, 10), fake_route(600, 10)], place=None)
+        rests = [r for d in result["daily_logs"] for r in d["remarks"] if r["activity"].startswith("10-hour rest")]
+        self.assertTrue(rests)
+        for remark in rests:
+            lat, lng = (float(x) for x in remark["place"].split(","))
+            self.assertTrue(30 < lat < 42 and -92 < lng < -86)
+
+    def test_one_reverse_lookup_per_distinct_spot(self):
+        with mock.patch(PATCH_TARGET, side_effect=[fake_route(600, 10), fake_route(600, 10)]), mock.patch(
+            REVERSE_TARGET, return_value="Testville, TS"
+        ) as reverse:
+            plan_trip("A", "B", "C", 0, start_time=START)
+        spots = [(round(c.args[0], 2), round(c.args[1], 2)) for c in reverse.call_args_list]
+        self.assertEqual(len(spots), len(set(spots)))

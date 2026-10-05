@@ -1,7 +1,7 @@
 import './App.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import EldLogCanvas from './components/EldLogCanvas';
+import EldLogSheet from './components/EldLogSheet';
 import TripMap from './components/TripMap';
 
 // Backend base URL. Override with REACT_APP_API_URL (e.g. http://localhost:8000 for local dev).
@@ -276,8 +276,15 @@ function App() {
 
           {Array.isArray(dailyLogs) && dailyLogs.length ? (
             <div className="Stack">
-              {dailyLogs.map((d) => (
-                <EldLogCanvas key={d.date} date={d.date} segments={d.segments} />
+              {dailyLogs.map((d, i) => (
+                <EldLogSheet
+                  key={d.date}
+                  date={d.date}
+                  segments={d.segments}
+                  remarks={d.remarks}
+                  dayIndex={i}
+                  dayCount={dailyLogs.length}
+                />
               ))}
             </div>
           ) : null}

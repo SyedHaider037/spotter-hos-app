@@ -19,7 +19,7 @@ A full-stack **Hours of Service (HOS)** trip planning application for commercial
 - **Stops timeline**: breaks, rest, fuel, pickup/dropoff markers with times and durations
 - **Daily logs**: duty-status segments grouped by date for ELD-style visualization
 - **Interactive map** (React + Leaflet): stop markers with popups and route visualization
-- **ELD log grids** (HTML Canvas): one sheet per day, 24-hour grid, four duty rows
+- **Daily log sheets** (SVG): one logbook-style sheet per day with the four duty-status rows (off duty, sleeper berth, driving, on duty not driving), a line drawn through each status change, numbered remarks (place and activity), and per-row hour totals that add up to 24
 - **JSON API**: single planning endpoint for integrations and the SPA
 
 ---
@@ -187,6 +187,13 @@ curl -s -X POST https://spotter-hos-app-e2aab.containers.snapdeploy.app/api/plan
           "start": "2026-01-01T12:00:00Z",
           "end": "2026-01-01T14:00:00Z"
         }
+      ],
+      "remarks": [
+        {
+          "time": "2026-01-01T12:00:00Z",
+          "place": "Chicago, IL",
+          "activity": "Start trip, driving"
+        }
       ]
     }
   ],
@@ -199,6 +206,8 @@ curl -s -X POST https://spotter-hos-app-e2aab.containers.snapdeploy.app/api/plan
   }
 }
 ```
+
+Each daily log's `remarks` list has one entry per duty-status change that day. `place` is the location as typed for the start, pickup and dropoff, and a "City, ST" (or "X County, ST") label from OpenRouteService reverse geocoding for rests and breaks, falling back to coordinates if that lookup fails.
 
 `route.legs` has one entry per leg (current → pickup, then pickup → dropoff). Each `polyline` is the road geometry from OpenRouteService as a [Google encoded polyline](https://developers.google.com/maps/documentation/utilities/polylinealgorithm) (1e-5 degree precision), which the frontend decodes and draws on the map.
 

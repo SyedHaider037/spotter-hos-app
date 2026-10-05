@@ -27,12 +27,13 @@ This module contains logic only (no Django views).
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, TypedDict
 
 from . import hos_rules
-from .route_service import RouteServiceError, RouteResult, get_route
+from .route_service import RouteServiceError, RouteResult, get_route, reverse_geocode
 
 
 StopType = Literal["CURRENT", "PICKUP", "DROPOFF", "BREAK_30", "REST_10", "FUEL", "ON_DUTY"]
@@ -55,9 +56,16 @@ class LogSegment(TypedDict):
     end: str
 
 
+class Remark(TypedDict):
+    time: str
+    place: str  # "City, ST" (or the location as typed for current/pickup/dropoff)
+    activity: str
+
+
 class DailyLog(TypedDict):
     date: str
     segments: list[LogSegment]
+    remarks: list[Remark]  # one per duty-status change, for the log sheet's remarks section
 
 
 class TripPlannerError(RuntimeError):
@@ -174,6 +182,33 @@ def _split_into_daily_logs(segments: list[LogSegment]) -> list[DailyLog]:
     return [{"date": d, "segments": segs} for d, segs in sorted(by_date.items(), key=lambda kv: kv[0])]
 
 
+def _attach_remarks(daily_logs: list[DailyLog], events: list[dict[str, Any]]) -> None:
+    """Attach each remark to the daily log of the UTC date it happened on (sorted by time)."""
+    by_date = {log["date"]: log for log in daily_logs}
+    for log in daily_logs:
+        log["remarks"] = []
+    if not daily_logs:
+        return
+    for event in sorted(events, key=lambda e: e["time"]):
+        log = by_date.get(event["time"].astimezone(timezone.utc).date().isoformat(), daily_logs[-1])
+        log["remarks"].append({"time": _iso(event["time"]), "place": event["place"], "activity": event["activity"]})
+
+
+def _resolve_event_places(events: list[dict[str, Any]]) -> None:
+    """Fill in "City, ST" for events that only have coordinates (one lookup per distinct spot, in parallel)."""
+    spots = {(round(e["lat"], 2), round(e["lng"], 2)) for e in events if e["place"] is None}
+    if not spots:
+        return
+    ordered = sorted(spots)
+    with ThreadPoolExecutor(max_workers=min(6, len(ordered))) as pool:
+        names = list(pool.map(lambda s: reverse_geocode(s[0], s[1]), ordered))
+    resolved = dict(zip(ordered, names))
+    for event in events:
+        if event["place"] is None:
+            spot = (round(event["lat"], 2), round(event["lng"], 2))
+            event["place"] = resolved.get(spot) or f"{event['lat']:.2f}, {event['lng']:.2f}"
+
+
 def _add_stop(
     stops: list[Stop],
     *,
@@ -248,9 +283,14 @@ def plan_trip(
 
     stops: list[Stop] = []
     segments: list[LogSegment] = []
+    events: list[dict[str, Any]] = []  # duty-status changes, for the log sheet's remarks
+
+    def add_event(when: datetime, activity: str, lat: float, lng: float, place: str | None = None) -> None:
+        events.append({"time": when, "activity": activity, "lat": lat, "lng": lng, "place": place})
 
     # Initial marker stop (0 duration).
     start_lat, start_lng = legs[0].points[0]
+    add_event(now, "Start trip, driving", start_lat, start_lng, current_location)
     _add_stop(stops, stop_type="CURRENT", location=current_location, lat=start_lat, lng=start_lng, start=now, end=now)
 
     # State tracked in hours / miles.
@@ -272,6 +312,8 @@ def plan_trip(
         rest = timedelta(hours=hos_rules.MIN_REST_HOURS)
         start = time_cursor
         end = time_cursor + rest
+        add_event(start, "10-hour rest (off duty)", lat, lng)
+        add_event(end, "Resume driving", lat, lng)
         _add_segment(segments, "OFF_DUTY", start, end)
         _add_stop(stops, stop_type="REST_10", location="Rest (10 hours)", lat=lat, lng=lng, start=start, end=end)
         time_cursor = end
@@ -284,6 +326,8 @@ def plan_trip(
         brk = timedelta(minutes=hos_rules.BREAK_DURATION_MINUTES)
         start = time_cursor
         end = time_cursor + brk
+        add_event(start, "30-minute break (off duty)", lat, lng)
+        add_event(end, "Resume driving", lat, lng)
         _add_segment(segments, "OFF_DUTY", start, end)
         _add_stop(stops, stop_type="BREAK_30", location="30-min break", lat=lat, lng=lng, start=start, end=end)
         time_cursor = end
@@ -297,11 +341,15 @@ def plan_trip(
         _add_stop(stops, stop_type="FUEL", location="Fuel stop", lat=lat, lng=lng, start=start, end=end)
         miles_since_fuel = 0.0
 
-    def do_on_duty(hours: float, label: str, stop_type: StopType, lat: float, lng: float) -> None:
+    def do_on_duty(
+        hours: float, label: str, stop_type: StopType, lat: float, lng: float, place: str, arrive: str, depart: str
+    ) -> None:
         nonlocal time_cursor
         dur = timedelta(hours=hours)
         start = time_cursor
         end = time_cursor + dur
+        add_event(start, arrive, lat, lng, place)
+        add_event(end, depart, lat, lng, place)
         ensure_cycle_capacity(hours)
         _add_segment(segments, "ON_DUTY", start, end)
         _add_stop(stops, stop_type=stop_type, location=label, lat=lat, lng=lng, start=start, end=end)
@@ -409,6 +457,9 @@ def plan_trip(
                 "ON_DUTY",
                 arrival_lat,
                 arrival_lng,
+                pickup_location,
+                "Pickup, loading (on duty)",
+                "Leave pickup, driving",
             )
         else:
             _add_stop(
@@ -426,9 +477,14 @@ def plan_trip(
                 "ON_DUTY",
                 arrival_lat,
                 arrival_lng,
+                dropoff_location,
+                "Dropoff, unloading (on duty)",
+                "Trip complete (off duty)",
             )
 
     daily_logs = _split_into_daily_logs(segments)
+    _resolve_event_places(events)
+    _attach_remarks(daily_logs, events)
     route = {
         "encoding": "polyline5",  # Google encoded polyline, 1e-5 degree precision, as returned by ORS
         "legs": [{"polyline": leg.route.polyline} for leg in legs],
