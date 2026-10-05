@@ -98,7 +98,7 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
 
           {/* Hour scale */}
           {Array.from({ length: 25 }, (_, h) => (
-            <text key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fill="#64748b">
+            <text key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fill="#526077">
               {hourLabel(h)}
             </text>
           ))}
@@ -140,7 +140,7 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
               </text>
             </g>
           ))}
-          <text x={TOTAL_X + TOTAL_W / 2} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fontWeight="700" fill="#64748b">
+          <text x={TOTAL_X + TOTAL_W / 2} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fontWeight="700" fill="#526077">
             Total hours
           </text>
           <text className="LogSheetTotal" x={TOTAL_X + TOTAL_W / 2} y={GRID_BOTTOM + 18} textAnchor="middle" fontSize="13" fontWeight="800" fill="#0f172a">

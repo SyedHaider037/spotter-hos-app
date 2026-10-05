@@ -18,12 +18,13 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   font-size: 18px;
+  line-height: 1.2;
 }
 
 .TopBarSubtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: #64748b;
+  color: #526077;
 }
 
 .Layout {
@@ -65,12 +66,13 @@
   font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .CardSubtitle {
   margin-top: 4px;
   font-size: 12px;
-  color: #64748b;
+  color: #526077;
 }
 
 .Form {
@@ -92,7 +94,9 @@
   border: 1px solid #dbe3ee;
   border-radius: 10px;
   padding: 10px 10px;
+  font-family: inherit;
   font-size: 14px;
+  color: #0f172a;
   outline: none;
 }
 
@@ -105,6 +109,7 @@
   border: none;
   border-radius: 10px;
   padding: 10px 12px;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 800;
   background: #2563eb;
@@ -165,7 +170,7 @@
 .StopMeta {
   margin-top: 2px;
   font-size: 12px;
-  color: #64748b;
+  color: #526077;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -248,7 +253,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #526077;
   margin-bottom: 6px;
 }
 
@@ -283,7 +288,7 @@
 
 .LogRemarkTime {
   font-variant-numeric: tabular-nums;
-  color: #64748b;
+  color: #526077;
 }
 
 .LogRemarkPlace {
@@ -297,7 +302,7 @@
 .LogSheetNote {
   margin-top: 10px;
   font-size: 12px;
-  color: #64748b;
+  color: #526077;
 }
 
 @media (max-width: 600px) {
@@ -321,6 +326,6 @@
   border-radius: 12px;
   background: #ffffff;
   padding: 18px;
-  color: #64748b;
+  color: #526077;
   font-size: 14px;
 }
