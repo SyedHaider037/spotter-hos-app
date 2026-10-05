@@ -14,7 +14,7 @@ const ROW_H = 38;
 const GRID_H = ROW_H * ROWS.length;
 const GRID_BOTTOM = GRID_Y + GRID_H;
 const LANE_H = 20;
-const MARKER_R = 8;
+const MARKER_R = 9;
 
 const STATUS_COLOR = {
   DRIVING: '#2563eb',
@@ -98,7 +98,7 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
 
           {/* Hour scale */}
           {Array.from({ length: 25 }, (_, h) => (
-            <text className="LogSheetHour" key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fill="#526077">
+            <text className="LogSheetHour" key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fill="#526077">
               {hourLabel(h)}
             </text>
           ))}
@@ -123,27 +123,25 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
           {/* Row labels and totals */}
           {ROWS.map((r, i) => (
             <g key={`label${r.key}`}>
-              <text x={GRID_X - 10} y={GRID_Y + i * ROW_H + ROW_H / 2 + 4} textAnchor="end" fontSize="13" fontWeight="600" fill="#0f172a">
+              <text className="LogSheetRowLabel" x={GRID_X - 10} y={GRID_Y + i * ROW_H + ROW_H / 2 + 4} textAnchor="end" fill="#0f172a">
                 {r.label}
               </text>
               <rect x={TOTAL_X} y={GRID_Y + i * ROW_H} width={TOTAL_W} height={ROW_H} fill="#ffffff" stroke="#94a3b8" />
               <text
-                className="LogSheetTotal"
+                className="LogSheetTotal LogSheetRowTotal"
                 x={TOTAL_X + TOTAL_W / 2}
                 y={GRID_Y + i * ROW_H + ROW_H / 2 + 5}
                 textAnchor="middle"
-                fontSize="15"
-                fontWeight="700"
                 fill="#0f172a"
               >
                 {formatDuration(sheet.totals[r.key])}
               </text>
             </g>
           ))}
-          <text x={TOTAL_X + TOTAL_W / 2} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fontWeight="700" fill="#526077">
+          <text className="LogSheetColHead" x={TOTAL_X + TOTAL_W / 2} y={GRID_Y - 10} textAnchor="middle" fill="#526077">
             Total hours
           </text>
-          <text className="LogSheetTotal" x={TOTAL_X + TOTAL_W / 2} y={GRID_BOTTOM + 18} textAnchor="middle" fontSize="13" fontWeight="800" fill="#0f172a">
+          <text className="LogSheetTotal LogSheetGrand" x={TOTAL_X + TOTAL_W / 2} y={GRID_BOTTOM + 18} textAnchor="middle" fill="#0f172a">
             = {formatDuration(totalAll)}
           </text>
 
@@ -181,7 +179,7 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
               <g key={`rm${r.number}`} className="LogSheetMarker">
                 <line x1={r.x} x2={r.x} y1={GRID_BOTTOM} y2={cy - MARKER_R} stroke="#0f172a" strokeWidth="1" />
                 <circle cx={r.x} cy={cy} r={MARKER_R} fill="#0f172a" />
-                <text x={r.x} y={cy + 3.5} textAnchor="middle" fontSize="10" fontWeight="700" fill="#ffffff">
+                <text className="LogSheetMarkerNum" x={r.x} y={cy + 4} textAnchor="middle" fill="#ffffff">
                   {r.number}
                 </text>
               </g>

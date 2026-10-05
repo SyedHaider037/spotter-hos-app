@@ -1,30 +1,32 @@
+/* Design tokens (type scale and colors) live in index.css; components only reference the semantic tokens. */
+
 .AppShell {
   min-height: 100vh;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--color-bg-page);
+  color: var(--color-text);
 }
 
 .TopBar {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-bg-glass);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   padding: 14px 18px;
 }
 
 .TopBarTitle {
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-size: 18px;
-  line-height: 1.2;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
 }
 
 .TopBarSubtitle {
   margin-top: 2px;
-  font-size: 12px;
-  color: #526077;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .Layout {
@@ -49,30 +51,30 @@
 }
 
 .Card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
 .CardHeader {
   padding: 14px 14px 10px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .CardTitle {
   margin: 0;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
 }
 
 .CardSubtitle {
   margin-top: 4px;
-  font-size: 12px;
-  color: #526077;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .Form {
@@ -83,26 +85,26 @@
 }
 
 .FieldLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: #334155;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-label);
   margin-bottom: 6px;
 }
 
 .Input {
   width: 100%;
-  border: 1px solid #dbe3ee;
+  border: 1px solid var(--color-border-input);
   border-radius: 10px;
   padding: 10px 10px;
   font-family: inherit;
-  font-size: 14px;
-  color: #0f172a;
+  font-size: var(--text-sm);
+  color: var(--color-text);
   outline: none;
 }
 
 .Input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: var(--color-accent-focus-border);
+  box-shadow: 0 0 0 3px var(--color-accent-focus-ring);
 }
 
 .Button {
@@ -110,10 +112,10 @@
   border-radius: 10px;
   padding: 10px 12px;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  background: #2563eb;
-  color: white;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
   cursor: pointer;
 }
 
@@ -125,19 +127,19 @@
 .Error {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
-  color: #b91c1c;
-  font-size: 13px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-text);
+  font-size: var(--text-sm);
 }
 
 .Notice {
   padding: 10px 12px;
   border-radius: 10px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  font-size: 13px;
+  background: var(--color-notice-bg);
+  border: 1px solid var(--color-notice-border);
+  color: var(--color-notice-text);
+  font-size: var(--text-sm);
 }
 
 .StopsList {
@@ -151,11 +153,11 @@
 .StopDayTitle {
   margin: 0;
   padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
-  color: #526077;
+  color: var(--color-text-muted);
 }
 
 .StopRow {
@@ -167,22 +169,22 @@
 }
 
 .StopRow:nth-child(odd) {
-  background: #f8fafc;
+  background: var(--color-bg-row);
 }
 
 .StopTime {
-  font-size: 13px;
-  color: #526077;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .StopTitle {
-  font-weight: 700;
-  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
 }
 
 .StopDetail {
-  font-size: 12px;
-  color: #526077;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 /* Tabular numerals wherever times and durations line up in columns. */
@@ -207,39 +209,73 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #0f172a;
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.45);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
+  background: var(--color-marker);
+  border: 2px solid var(--color-marker-ring);
+  box-shadow: var(--shadow-marker);
+  color: var(--color-text-on-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
   line-height: 1;
 }
 
 .StopMarker--destination,
 .StopMarker--start {
-  background: #2563eb;
+  background: var(--color-marker-destination);
 }
 
 .StopMarkerCount {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 14px;
-  height: 14px;
+  top: -7px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 3px;
-  border-radius: 7px;
-  background: #ffffff;
-  border: 1px solid #0f172a;
-  color: #0f172a;
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 12px;
+  border-radius: 8px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-marker);
+  color: var(--color-marker);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 14px;
   text-align: center;
 }
 
 .MapWrap {
   padding: 10px;
+}
+
+/* Map text follows the app's type, not Leaflet's own defaults. */
+.leaflet-container {
+  font-family: inherit;
+  font-size: var(--text-xs);
+}
+
+/* Zoom buttons: Leaflet defaults to 22px bold monospace, which is outside the type scale. */
+.leaflet-container .leaflet-control-zoom a {
+  font-family: inherit;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.leaflet-container .leaflet-popup-content {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.PopupBody {
+  min-width: 220px;
+}
+
+.PopupTitle {
+  font-weight: var(--weight-semibold);
+}
+
+.PopupDetail {
+  color: var(--color-text-muted);
+}
+
+.PopupTimes {
+  font-size: var(--text-xs);
 }
 
 .LogSheetBody {
@@ -252,22 +288,53 @@
   height: auto;
 }
 
+/* Text inside the log sheet SVG: sizes come from the type scale (the SVG scales with its card). */
+.LogSheetHour {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+}
+
+.LogSheetRowLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.LogSheetColHead {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.LogSheetRowTotal {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.LogSheetGrand {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.LogSheetMarkerNum {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
 .LogSheetTotal {
   font-variant-numeric: tabular-nums;
 }
 
 .LogRemarks {
   margin-top: 10px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid var(--color-border-subtle);
   padding-top: 10px;
 }
 
 .LogRemarksTitle {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
-  color: #526077;
+  color: var(--color-text-muted);
   margin-bottom: 6px;
 }
 
@@ -284,7 +351,7 @@
   grid-template-columns: 22px 52px minmax(120px, 1.1fr) 2fr;
   column-gap: 10px;
   align-items: baseline;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .LogRemarkNumber {
@@ -294,30 +361,30 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
+  background: var(--color-marker);
+  color: var(--color-text-on-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
 }
 
 .LogRemarkTime {
   font-variant-numeric: tabular-nums;
-  color: #526077;
+  color: var(--color-text-muted);
 }
 
 .LogRemarkPlace {
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
 }
 
 .LogRemarkActivity {
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .LogSheetNote {
   margin: 0;
   max-width: 70ch;
-  font-size: 12px;
-  color: #526077;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
   text-wrap: pretty;
 }
 
@@ -338,10 +405,10 @@
 }
 
 .EmptyState {
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--color-border-dashed);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--color-bg-surface);
   padding: 18px;
-  color: #526077;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }

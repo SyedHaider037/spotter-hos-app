@@ -1,3 +1,67 @@
+/*
+  Design tokens.
+  Type scale: 12 / 14 / 16 / 20 / 28 px, weights 400 / 500 / 600 only.
+  Colors are semantic (named by role, not by hue); components reference these, never raw hex values.
+*/
+:root {
+  /* Type scale */
+  --text-xs: 12px; /* captions, labels, small metadata */
+  --text-sm: 14px; /* body and data */
+  --text-md: 16px; /* card titles, key figures */
+  --text-lg: 20px; /* page title */
+  --text-xl: 28px; /* headline figures */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --leading-tight: 1.2; /* titles */
+  --leading-normal: 1.5; /* body text and anything that can wrap */
+
+  --tracking-tight: -0.01em; /* titles */
+  --tracking-caps: 0.04em; /* small uppercase labels */
+
+  /* Surfaces */
+  --color-bg-page: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-glass: rgba(255, 255, 255, 0.9);
+  --color-bg-row: #f8fafc;
+
+  /* Text */
+  --color-text: #0f172a;
+  --color-text-muted: #526077;
+  --color-text-label: #334155;
+  --color-text-on-accent: #ffffff;
+
+  /* Borders */
+  --color-border: #e5e7eb;
+  --color-border-subtle: #eef2f7;
+  --color-border-input: #dbe3ee;
+  --color-border-dashed: #cbd5e1;
+
+  /* Interactive accent */
+  --color-accent: #2563eb;
+  --color-accent-focus-border: #60a5fa;
+  --color-accent-focus-ring: rgba(37, 99, 235, 0.12);
+
+  /* Feedback */
+  --color-error-text: #b91c1c;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fee2e2;
+  --color-notice-text: #1d4ed8;
+  --color-notice-bg: #eff6ff;
+  --color-notice-border: #bfdbfe;
+
+  /* Map markers */
+  --color-marker: #0f172a;
+  --color-marker-destination: #2563eb;
+  --color-marker-ring: #ffffff;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-marker: 0 1px 4px rgba(15, 23, 42, 0.45);
+}
+
 *,
 *::before,
 *::after {
@@ -6,10 +70,12 @@
 
 body {
   margin: 0;
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -78,13 +78,13 @@ function StopMarkers({ items }) {
         zIndexOffset={(BADGE_PRIORITY.length - Math.max(0, BADGE_PRIORITY.indexOf(primaryType(groupStops)))) * 100}
       >
         <Popup>
-          <div style={{ minWidth: 220 }}>
+          <div className="PopupBody">
             {infos.map((info, idx) => (
               <div key={`${info.type}-${idx}`} style={{ marginBottom: idx < infos.length - 1 ? 10 : 0 }}>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>{info.title}</div>
-                {info.detail ? <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 6 }}>{info.detail}</div> : null}
-                <div className="PopupTimes" style={{ fontSize: 12 }}>
-                  <div>{info.endDateTime ? `${info.dateTime} to ${info.endDateTime}` : info.dateTime}</div>
+                <div className="PopupTitle">{info.title}</div>
+                {info.detail ? <div className="PopupDetail">{info.detail}</div> : null}
+                <div className="PopupTimes">
+                  {info.endDateTime ? `${info.dateTime} to ${info.endDateTime}` : info.dateTime}
                 </div>
               </div>
             ))}
