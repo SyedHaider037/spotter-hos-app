@@ -49,10 +49,44 @@
   align-items: start;
 }
 
+/* Intermediate width: a slimmer form column so the map and logs keep their room. */
+@media (max-width: 1240px) {
+  .Layout {
+    grid-template-columns: 340px 1fr;
+  }
+}
+
 @media (max-width: 980px) {
   .Layout {
     grid-template-columns: 1fr;
     padding: var(--space-4);
+  }
+}
+
+/* Phones: tighter page margins and section gaps, shorter map. */
+@media (max-width: 600px) {
+  .Layout {
+    gap: var(--space-4);
+    padding: var(--space-3);
+  }
+
+  .Left,
+  .Right,
+  .Stack {
+    gap: var(--space-4);
+  }
+
+  .SummaryList {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .SummaryList {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .MapWrap,
+  .LogSheetBody {
+    padding: var(--space-3);
   }
 }
 
@@ -144,13 +178,15 @@
   margin-bottom: var(--space-1);
 }
 
+/* 44px tall, and 16px text so iOS Safari does not zoom the page when an input is focused. */
 .Input {
   width: 100%;
+  min-height: var(--control-height);
   border: 1px solid var(--color-border-input);
-  border-radius: 10px;
-  padding: 10px 10px;
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-3);
   font-family: inherit;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--color-text);
   outline: none;
 }
@@ -161,20 +197,77 @@
 }
 
 .Button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
   border: none;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  padding: 0 var(--space-4);
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   background: var(--color-accent);
   color: var(--color-text-on-accent);
   cursor: pointer;
+  transition: background-color 120ms ease, transform 60ms ease;
+}
+
+.Button:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.Button:active:not(:disabled) {
+  background: var(--color-accent-active);
+  transform: translateY(1px);
+}
+
+/* Keyboard focus: a clear ring that is offset from the button so it shows against the accent fill. */
+.Button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .Button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* While planning: keep the button readable and show it is working. */
+.Button[aria-busy='true'] {
+  opacity: 1;
+  cursor: progress;
+  background: var(--color-accent-hover);
+}
+
+.Spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Button {
+    transition: none;
+  }
+
+  .Button:active:not(:disabled) {
+    transform: none;
+  }
+
+  .Spinner {
+    animation-duration: 2s;
+  }
 }
 
 .Error {
@@ -312,6 +405,17 @@
 
 .MapWrap {
   padding: var(--space-4);
+}
+
+.MapCanvas {
+  width: 100%;
+  height: 420px;
+}
+
+@media (max-width: 600px) {
+  .MapCanvas {
+    height: 320px;
+  }
 }
 
 .MapLegend {
@@ -511,6 +615,67 @@
 
 .LogSheetTotal {
   font-variant-numeric: tabular-nums;
+}
+
+/* Phone-width sheet: smaller row labels, and the hours per status listed under the graph. */
+.LogSheetSvg--compact .LogSheetRowLabel {
+  font-size: var(--text-xs);
+}
+
+.LogTotals {
+  margin: var(--space-3) 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2) var(--space-4);
+}
+
+.LogTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.LogTotal dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-label);
+}
+
+.LogTotal dd {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.LogTotal--sum {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-2);
+}
+
+.LogTotalKey {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.LogTotalKey[data-status='DRIVING'] {
+  background: var(--color-status-driving);
+}
+
+.LogTotalKey[data-status='ON_DUTY'] {
+  background: var(--color-status-on-duty);
+}
+
+.LogTotalKey[data-status='SLEEPER'] {
+  background: var(--color-status-sleeper);
+}
+
+.LogTotalKey[data-status='OFF_DUTY'] {
+  background: var(--color-status-off-duty);
 }
 
 .LogRemarks {

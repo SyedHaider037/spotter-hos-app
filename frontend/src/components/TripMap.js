@@ -140,7 +140,7 @@ export default function TripMap({ stops, route }) {
       </div>
 
       <div className="MapWrap">
-        <MapContainer {...mapProps} scrollWheelZoom style={{ height: 420, width: '100%' }}>
+        <MapContainer {...mapProps} scrollWheelZoom className="MapCanvas">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

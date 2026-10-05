@@ -41,6 +41,10 @@
   --space-6: 24px;
   --space-8: 32px;
 
+  /* ---- Controls ---- */
+  --control-height: 44px; /* inputs and buttons: a comfortable touch target */
+  --radius-control: 10px;
+
   /* ---- Primitive ramps ---- */
   --neutral-0: #ffffff;
   --neutral-50: #f8fafc;
@@ -55,6 +59,8 @@
 
   --blue-400: #60a5fa;
   --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
 
   --green-700: #15803d;
   --amber-700: #b45309;
@@ -89,6 +95,8 @@
 
   /* Interactive accent (buttons, focus, links only) */
   --color-accent: var(--blue-600);
+  --color-accent-hover: var(--blue-700);
+  --color-accent-active: var(--blue-800);
   --color-accent-focus-border: var(--blue-400);
   --color-accent-focus-ring: rgba(37, 99, 235, 0.15);
   --color-link: var(--blue-600);

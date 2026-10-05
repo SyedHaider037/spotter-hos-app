@@ -1,4 +1,4 @@
-import { buildDaySheet, formatClock, formatDuration, MINUTES_PER_DAY, placeRemarks, ROWS } from './logSheet';
+import { buildDaySheet, formatClock, formatDuration, MINUTES_PER_DAY, placeRemarks, ROWS, sheetLayout } from './logSheet';
 
 const seg = (status, start, end) => ({ status, start, end });
 const sum = (totals) => Object.values(totals).reduce((a, b) => a + b, 0);
@@ -96,4 +96,44 @@ test('placeRemarks numbers remarks in time order and positions them by minute of
     [2, 870, 'Phoenix, AZ'],
   ]);
   expect(placeRemarks('2026-10-06', undefined)).toEqual([]);
+});
+
+
+describe('sheetLayout', () => {
+  test('a wide sheet keeps full labels, the totals column, every hour label and quarter-hour ticks', () => {
+    const l = sheetLayout(997);
+    expect(l).toMatchObject({ compact: false, labelW: 168, totalW: 72, hourStep: 1, tickMinutes: 15 });
+    expect(l.totalX + l.totalW).toBeLessThanOrEqual(l.width);
+    expect(l.totalX - (l.gridX + l.gridW)).toBeGreaterThanOrEqual(14); // clears the last hour label
+  });
+
+  test('a medium sheet labels every 2nd hour and drops the finest ticks', () => {
+    const l = sheetLayout(700);
+    expect(l).toMatchObject({ compact: false, hourStep: 2, tickMinutes: 30 });
+  });
+
+  test('a phone-width sheet is compact: short labels, no totals column, every 3rd hour, no ticks', () => {
+    const l = sheetLayout(330);
+    expect(l).toMatchObject({ compact: true, labelW: 68, totalW: 0, hourStep: 3, tickMinutes: 0 });
+    expect(l.gridW).toBeGreaterThan(240);
+    expect(l.gridX + l.gridW).toBeLessThanOrEqual(l.width - 14); // room for the last hour label
+  });
+
+  test('the graph always fits inside the available width, and hour labels always include Noon', () => {
+    [280, 320, 390, 480, 559, 560, 640, 800, 1000, 1200].forEach((w) => {
+      const l = sheetLayout(w);
+      expect(l.gridX + l.gridW).toBeLessThanOrEqual(l.width);
+      expect(l.gridW).toBeGreaterThan(0);
+      expect(12 % l.hourStep).toBe(0);
+    });
+  });
+
+  test('missing or tiny widths fall back to sane values', () => {
+    expect(sheetLayout(undefined).width).toBe(1000);
+    expect(sheetLayout(10).width).toBe(280);
+  });
+
+  test('every row has a short label', () => {
+    expect(ROWS.map((r) => r.short)).toEqual(['Off', 'Sleeper', 'Driving', 'On duty']);
+  });
 });

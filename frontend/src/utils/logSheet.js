@@ -4,11 +4,46 @@ export const MINUTES_PER_DAY = 24 * 60;
 
 // Row order matches a paper driver's daily log.
 export const ROWS = [
-  { key: 'OFF_DUTY', label: 'Off duty' },
-  { key: 'SLEEPER', label: 'Sleeper berth' },
-  { key: 'DRIVING', label: 'Driving' },
-  { key: 'ON_DUTY', label: 'On duty (not driving)' },
+  { key: 'OFF_DUTY', label: 'Off duty', short: 'Off' },
+  { key: 'SLEEPER', label: 'Sleeper berth', short: 'Sleeper' },
+  { key: 'DRIVING', label: 'Driving', short: 'Driving' },
+  { key: 'ON_DUTY', label: 'On duty (not driving)', short: 'On duty' },
 ];
+
+export const SHEET_DEFAULT_WIDTH = 1000;
+const COMPACT_BELOW = 560;
+
+/**
+ * Geometry of the duty-status graph for a given available width (px). The SVG is drawn 1:1 at that width, so its
+ * text is always the real type-scale size; narrower sheets drop the totals column, shorten the row labels and
+ * label fewer hours instead of shrinking everything.
+ */
+export function sheetLayout(width) {
+  const w = Math.max(280, Math.round(Number(width) || SHEET_DEFAULT_WIDTH));
+  const compact = w < COMPACT_BELOW;
+  const labelW = compact ? 68 : 168;
+  const totalW = compact ? 0 : 72;
+  const gridX = labelW;
+  // Room right of the grid: the last hour label ("Mid") is centered on the grid's edge, so it needs ~14px, and the
+  // totals column (when there is one) must clear it too.
+  const gap = totalW ? 14 : 0;
+  const rightMargin = totalW ? 2 : 16;
+  const gridW = w - labelW - (totalW ? totalW + gap : 0) - rightMargin;
+  const pxPerHour = gridW / 24;
+  return {
+    width: w,
+    compact,
+    labelW,
+    totalW,
+    gridX,
+    gridW,
+    totalX: gridX + gridW + gap,
+    // Label every hour when there is room, otherwise every 2nd or 3rd (both divide 12, so "Noon" always shows).
+    hourStep: pxPerHour >= 26 ? 1 : pxPerHour >= 14 ? 2 : 3,
+    // Finest tick marks between the hour lines: 15 minutes, 30 minutes, or none.
+    tickMinutes: pxPerHour >= 26 ? 15 : pxPerHour >= 12 ? 30 : 0,
+  };
+}
 
 export function rowIndex(status) {
   return ROWS.findIndex((r) => r.key === status);

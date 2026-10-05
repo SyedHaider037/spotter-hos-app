@@ -229,8 +229,15 @@ function App() {
                 />
               </label>
 
-              <button className="Button" type="submit" disabled={!canSubmit || loading}>
-                {loading ? 'Planning…' : 'Plan Trip'}
+              <button className="Button" type="submit" disabled={!canSubmit || loading} aria-busy={loading}>
+                {loading ? (
+                  <>
+                    <span className="Spinner" aria-hidden="true" />
+                    Planning…
+                  </>
+                ) : (
+                  'Plan Trip'
+                )}
               </button>
 
               {retryAttempt > 0 ? (
