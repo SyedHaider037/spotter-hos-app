@@ -195,3 +195,27 @@ class PickupDropoffTests(SimpleTestCase):
         segs = [s for s in all_segments(self.result) if s["status"] == "ON_DUTY"]
         self.assertEqual(len(segs), 2)
         self.assertTrue(all(abs(segment_hours(s) - 1.0) < 1e-6 for s in segs))
+
+
+class RouteGeometryTests(SimpleTestCase):
+    """The response exposes each leg's routing geometry so clients can draw the real road route."""
+
+    def test_route_contains_one_polyline_per_leg_unchanged(self):
+        leg1 = fake_route(120, 2, start=(41.0, -87.0), end=(35.0, -90.0))
+        leg2 = fake_route(120, 2, start=(35.0, -90.0), end=(32.7, -96.8))
+        result = run_plan([leg1, leg2])
+        self.assertEqual(result["route"]["encoding"], "polyline5")
+        self.assertEqual([leg["polyline"] for leg in result["route"]["legs"]], [leg1.polyline, leg2.polyline])
+
+    def test_existing_response_keys_are_unchanged(self):
+        result = run_plan([fake_route(120, 2), fake_route(120, 2)])
+        self.assertEqual(set(result), {"stops", "daily_logs", "route"})
+
+    def test_api_response_includes_route(self):
+        payload = {"current_location": "A", "pickup_location": "B", "dropoff_location": "C", "cycle_used_hours": 0}
+        with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]):
+            response = self.client.post("/api/plan/", payload, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body["route"]["legs"]), 2)
+        self.assertTrue(all(isinstance(leg["polyline"], str) and leg["polyline"] for leg in body["route"]["legs"]))

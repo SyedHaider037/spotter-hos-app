@@ -189,9 +189,18 @@ curl -s -X POST https://spotter-hos-app-e2aab.containers.snapdeploy.app/api/plan
         }
       ]
     }
-  ]
+  ],
+  "route": {
+    "encoding": "polyline5",
+    "legs": [
+      { "polyline": "_p~iF~ps|U_ulLnnqC_mqNvxq`@" },
+      { "polyline": "..." }
+    ]
+  }
 }
 ```
+
+`route.legs` has one entry per leg (current → pickup, then pickup → dropoff). Each `polyline` is the road geometry from OpenRouteService as a [Google encoded polyline](https://developers.google.com/maps/documentation/utilities/polylinealgorithm) (1e-5 degree precision), which the frontend decodes and draws on the map.
 
 Stop `type` values include (among others): `CURRENT`, `PICKUP`, `DROPOFF`, `BREAK_30`, `REST_10`, `FUEL`, `ON_DUTY`. Segment `status` values: `OFF_DUTY`, `SLEEPER`, `ON_DUTY`, `DRIVING`.
 

@@ -10,6 +10,7 @@ Inputs:
 Outputs:
   - stops list
   - daily_logs list
+  - route (encoded geometry per leg, for drawing on a map)
 
 Rules enforced (from PRD):
   - 11 hr max driving per day
@@ -226,6 +227,7 @@ def plan_trip(
     Simulate the trip and return:
       - stops: list[Stop]
       - daily_logs: list[DailyLog]
+      - route: {"encoding": "polyline5", "legs": [{"polyline": str}, ...]} (current->pickup, pickup->dropoff)
 
     `start_time` (timezone-aware) defaults to the current UTC time; pass it for deterministic output.
     """
@@ -427,5 +429,9 @@ def plan_trip(
             )
 
     daily_logs = _split_into_daily_logs(segments)
-    return {"stops": stops, "daily_logs": daily_logs}
+    route = {
+        "encoding": "polyline5",  # Google encoded polyline, 1e-5 degree precision, as returned by ORS
+        "legs": [{"polyline": leg.route.polyline} for leg in legs],
+    }
+    return {"stops": stops, "daily_logs": daily_logs, "route": route}
 

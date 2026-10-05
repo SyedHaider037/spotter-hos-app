@@ -272,7 +272,7 @@ function App() {
         </div>
 
         <div className="Right">
-          {result ? <TripMap stops={stops} /> : <div className="EmptyState">Submit the form to see map + logs.</div>}
+          {result ? <TripMap stops={stops} route={result.route} /> : <div className="EmptyState">Submit the form to see map + logs.</div>}
 
           {Array.isArray(dailyLogs) && dailyLogs.length ? (
             <div className="Stack">
