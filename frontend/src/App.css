@@ -41,6 +41,152 @@
   }
 }
 
+/* ---- Hours-of-service limits strip: ruled bars like the grid on a paper log ---- */
+.Limits {
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.LimitsTitle {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.LimitsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4) var(--space-8);
+}
+
+.Limit {
+  min-width: 0;
+}
+
+.LimitName {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-label);
+}
+
+.LimitBar {
+  position: relative;
+  height: 14px;
+  margin-top: var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 3px;
+  background: var(--color-bg-surface);
+  overflow: hidden;
+}
+
+/* One tick per hour (per 10 hours on the cycle), drawn over the fill like the printed hour lines on a log sheet. */
+.LimitBar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(100% / var(--ticks) - 1px),
+    var(--color-border-strong) calc(100% / var(--ticks) - 1px),
+    var(--color-border-strong) calc(100% / var(--ticks))
+  );
+}
+
+.LimitFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.LimitFill--driving {
+  background: var(--color-status-driving);
+}
+
+.LimitFill--window {
+  background: var(--color-status-on-duty);
+}
+
+.LimitFill--cycle {
+  background: var(--color-bg-inverse);
+}
+
+/* Hours this trip adds to the cycle, hatched so they read apart from the hours already used. */
+.LimitFill--added {
+  background: repeating-linear-gradient(135deg, var(--color-bg-inverse) 0 3px, var(--color-bg-surface) 3px 6px);
+}
+
+.LimitReadout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.LimitValue {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.LimitOf {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.LimitNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Phones: each limit is one compact row (name and figure on a line, bar below, note hidden). */
+@media (max-width: 600px) {
+  .Limits {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .LimitsTitle {
+    margin-bottom: var(--space-2);
+  }
+
+  .LimitsRow {
+    gap: var(--space-3);
+  }
+
+  .Limit {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'name readout'
+      'bar bar';
+    align-items: baseline;
+  }
+
+  .LimitName {
+    grid-area: name;
+  }
+
+  .LimitBar {
+    grid-area: bar;
+  }
+
+  .LimitReadout {
+    grid-area: readout;
+    margin-top: 0;
+  }
+
+  .LimitNote {
+    display: none;
+  }
+}
+
 .Layout {
   display: grid;
   grid-template-columns: 420px 1fr;
@@ -189,6 +335,20 @@
   font-size: var(--text-md);
   color: var(--color-text);
   outline: none;
+}
+
+.Input[aria-invalid='true'] {
+  border-color: var(--color-error-text);
+}
+
+.FieldHint {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.FieldHint--error {
+  color: var(--color-error-text);
 }
 
 .Input:focus {

@@ -2,7 +2,10 @@
 
 import { decodePolyline } from './polyline';
 
+export const DRIVING_LIMIT_HOURS = 11;
+export const SHIFT_WINDOW_HOURS = 14;
 export const CYCLE_LIMIT_HOURS = 70;
+const REST_MINUTES = 10 * 60;
 const RESTART_MINUTES = 34 * 60;
 const EARTH_RADIUS_MILES = 3958.8;
 
@@ -92,4 +95,40 @@ export function formatSpan(totalMinutes) {
 export function formatMiles(miles) {
   const n = Math.round(Number(miles));
   return Number.isFinite(n) && n > 0 ? `${n.toLocaleString('en-US')} mi` : '';
+}
+
+/**
+ * The busiest shift in a plan, for the 11-hour driving limit and the 14-hour window. A shift runs from the first
+ * driving or on-duty period after 10+ hours off duty until the last one before the next 10+ hours off.
+ * Returns { peakDrivingMinutes, peakWindowMinutes } (window = elapsed time, so breaks count).
+ */
+export function peakShift(dailyLogs) {
+  let shiftStart = null;
+  let lastWorkEnd = null;
+  let driving = 0;
+  let peakDriving = 0;
+  let peakWindow = 0;
+
+  const close = () => {
+    if (shiftStart !== null) {
+      peakDriving = Math.max(peakDriving, driving);
+      peakWindow = Math.max(peakWindow, (lastWorkEnd - shiftStart) / 60000);
+    }
+    shiftStart = null;
+    driving = 0;
+  };
+
+  mergedSegments(dailyLogs).forEach((seg) => {
+    const minutes = (seg.end - seg.start) / 60000;
+    if ((seg.status === 'OFF_DUTY' || seg.status === 'SLEEPER') && minutes >= REST_MINUTES - 1e-6) {
+      close();
+    } else if (seg.status === 'DRIVING' || seg.status === 'ON_DUTY') {
+      if (shiftStart === null) shiftStart = seg.start;
+      lastWorkEnd = seg.end;
+      if (seg.status === 'DRIVING') driving += minutes;
+    }
+  });
+  close();
+
+  return { peakDrivingMinutes: Math.round(peakDriving), peakWindowMinutes: Math.round(peakWindow) };
 }

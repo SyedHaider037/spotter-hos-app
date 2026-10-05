@@ -2,11 +2,12 @@ import './App.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import EldLogSheet from './components/EldLogSheet';
+import HosLimits from './components/HosLimits';
 import PlanPreview from './components/PlanPreview';
 import TripMap from './components/TripMap';
 import TripSummary from './components/TripSummary';
 import { describeStops, timeZoneLabel } from './utils/stops';
-import { summarizeTrip } from './utils/tripSummary';
+import { CYCLE_LIMIT_HOURS, peakShift, summarizeTrip } from './utils/tripSummary';
 
 // Backend base URL. Override with REACT_APP_API_URL (e.g. http://localhost:8000 for local dev).
 const API_URL = (
@@ -97,14 +98,19 @@ function App() {
     [result, stops, plannedCycleHours]
   );
 
+  // The 70-hour cycle can't have more than 70 hours used (the planner rejects it), so say so while typing.
+  const cycleNum = Number(cycleUsedHours);
+  const cycleValid = String(cycleUsedHours).trim() !== '' && Number.isFinite(cycleNum) && cycleNum >= 0 && cycleNum <= CYCLE_LIMIT_HOURS;
+  const hoursLeft = Math.round((CYCLE_LIMIT_HOURS - cycleNum) * 100) / 100;
+
+  const limits = useMemo(
+    () => (result && summary ? { ...peakShift(result.daily_logs), cycleAfterHours: summary.cycleAfterHours } : null),
+    [result, summary]
+  );
+
   const canSubmit = useMemo(() => {
-    return (
-      currentLocation.trim() &&
-      pickupLocation.trim() &&
-      dropoffLocation.trim() &&
-      Number.isFinite(Number(cycleUsedHours))
-    );
-  }, [currentLocation, pickupLocation, dropoffLocation, cycleUsedHours]);
+    return currentLocation.trim() && pickupLocation.trim() && dropoffLocation.trim() && cycleValid;
+  }, [currentLocation, pickupLocation, dropoffLocation, cycleValid]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -112,7 +118,7 @@ function App() {
     setResult(null);
 
     if (!canSubmit) {
-      setError('Please fill out all fields.');
+      setError('Fill in all four fields to plan a trip.');
       return;
     }
 
@@ -173,8 +179,10 @@ function App() {
       />
       <div className="TopBar">
         <div className="TopBarTitle">HOS Trip Planner</div>
-        <div className="TopBarSubtitle">Stops + ELD log sheets</div>
+        <div className="TopBarSubtitle">Stops, rests and daily logs that stay inside the hours-of-service rules</div>
       </div>
+
+      <HosLimits cycleBefore={result ? plannedCycleHours : cycleNum} plan={limits} />
 
       <div className="Layout">
         {summary ? <TripSummary summary={summary} /> : null}
@@ -182,13 +190,13 @@ function App() {
         <div className="Left">
           <div className="Card">
             <div className="CardHeader">
-              <h2 className="CardTitle">Trip inputs</h2>
-              <div className="CardSubtitle">Plan a route and generate HOS-compliant stops and daily logs</div>
+              <h2 className="CardTitle">Plan a trip</h2>
+              <div className="CardSubtitle">Enter your route and the hours you have already used this cycle.</div>
             </div>
 
             <form className="Form" onSubmit={onSubmit}>
               <label className="Field">
-                <div className="FieldLabel">Current Location</div>
+                <div className="FieldLabel">Current location</div>
                 <input
                   className="Input"
                   value={currentLocation}
@@ -198,7 +206,7 @@ function App() {
               </label>
 
               <label className="Field">
-                <div className="FieldLabel">Pickup Location</div>
+                <div className="FieldLabel">Pickup location</div>
                 <input
                   className="Input"
                   value={pickupLocation}
@@ -208,7 +216,7 @@ function App() {
               </label>
 
               <label className="Field">
-                <div className="FieldLabel">Dropoff Location</div>
+                <div className="FieldLabel">Dropoff location</div>
                 <input
                   className="Input"
                   value={dropoffLocation}
@@ -218,15 +226,25 @@ function App() {
               </label>
 
               <label className="Field">
-                <div className="FieldLabel">Current Cycle Used Hours</div>
+                <div className="FieldLabel">Hours used this cycle (of {CYCLE_LIMIT_HOURS})</div>
                 <input
                   className="Input"
                   type="number"
                   step="0.25"
                   min="0"
+                  max={CYCLE_LIMIT_HOURS}
                   value={cycleUsedHours}
                   onChange={(e) => setCycleUsedHours(e.target.value)}
+                  aria-invalid={!cycleValid}
+                  aria-describedby="cycle-hint"
                 />
+                <div id="cycle-hint" className={cycleValid ? 'FieldHint' : 'FieldHint FieldHint--error'}>
+                  {!cycleValid
+                    ? `Enter a number from 0 to ${CYCLE_LIMIT_HOURS}.`
+                    : hoursLeft === 0
+                      ? 'No hours left: the plan will begin with a 34-hour restart.'
+                      : `${hoursLeft} ${hoursLeft === 1 ? 'hour' : 'hours'} left before a 34-hour restart.`}
+                </div>
               </label>
 
               <button className="Button" type="submit" disabled={!canSubmit || loading} aria-busy={loading}>
@@ -236,18 +254,18 @@ function App() {
                     Planning…
                   </>
                 ) : (
-                  'Plan Trip'
+                  'Plan trip'
                 )}
               </button>
 
               {retryAttempt > 0 ? (
                 <div className="Notice" role="status">
-                  Starting up the server, this can take up to a minute... Retrying automatically (attempt{' '}
+                  The server is starting up, which can take up to a minute. Retrying automatically (attempt{' '}
                   {retryAttempt + 1} of {MAX_ATTEMPTS}).
                 </div>
               ) : showWakeNotice ? (
                 <div className="Notice" role="status">
-                  Waking up the server — this can take up to a minute after it has been idle. Thanks for waiting!
+                  The server is starting up after sitting idle, which can take up to a minute. Thanks for waiting.
                 </div>
               ) : null}
 

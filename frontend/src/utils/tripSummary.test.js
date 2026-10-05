@@ -1,4 +1,14 @@
-import { CYCLE_LIMIT_HOURS, formatMiles, formatSpan, haversineMiles, routeMiles, summarizeTrip } from './tripSummary';
+import {
+  CYCLE_LIMIT_HOURS,
+  DRIVING_LIMIT_HOURS,
+  SHIFT_WINDOW_HOURS,
+  formatMiles,
+  formatSpan,
+  haversineMiles,
+  peakShift,
+  routeMiles,
+  summarizeTrip,
+} from './tripSummary';
 import { encodePolyline } from './polylineTestHelper';
 
 const seg = (status, start, end) => ({ status, start, end });
@@ -120,5 +130,50 @@ describe('formatting', () => {
   test('formatMiles', () => {
     expect(formatMiles(1496.6)).toBe('1,497 mi');
     expect(formatMiles(0)).toBe('');
+  });
+});
+
+describe('peakShift', () => {
+  const day = (date, segments) => ({ date, segments });
+
+  test('the limits are the HOS rules the planner enforces', () => {
+    expect([DRIVING_LIMIT_HOURS, SHIFT_WINDOW_HOURS, CYCLE_LIMIT_HOURS]).toEqual([11, 14, 70]);
+  });
+
+  test('driving and window are measured per shift, and a 30-minute break does not start a new shift', () => {
+    const logs = [
+      day('2026-10-05', [
+        seg('DRIVING', '2026-10-05T10:00:00Z', '2026-10-05T18:00:00Z'), // 8h
+        seg('OFF_DUTY', '2026-10-05T18:00:00Z', '2026-10-05T18:30:00Z'), // 30 min break
+        seg('DRIVING', '2026-10-05T18:30:00Z', '2026-10-05T21:30:00Z'), // 3h -> 11h driving, 11.5h window
+        seg('OFF_DUTY', '2026-10-05T21:30:00Z', '2026-10-06T00:00:00Z'),
+      ]),
+      day('2026-10-06', [
+        seg('OFF_DUTY', '2026-10-06T00:00:00Z', '2026-10-06T07:30:00Z'), // 10h rest in total
+        seg('DRIVING', '2026-10-06T07:30:00Z', '2026-10-06T10:30:00Z'),
+        seg('ON_DUTY', '2026-10-06T10:30:00Z', '2026-10-06T11:30:00Z'),
+      ]),
+    ];
+    expect(peakShift(logs)).toEqual({ peakDrivingMinutes: 11 * 60, peakWindowMinutes: 11 * 60 + 30 });
+  });
+
+  test('a 9-hour gap is not a rest, so both stretches count as one shift', () => {
+    const logs = [
+      day('2026-10-05', [
+        seg('DRIVING', '2026-10-05T08:00:00Z', '2026-10-05T12:00:00Z'),
+        seg('OFF_DUTY', '2026-10-05T12:00:00Z', '2026-10-05T21:00:00Z'),
+        seg('DRIVING', '2026-10-05T21:00:00Z', '2026-10-05T23:00:00Z'),
+      ]),
+    ];
+    expect(peakShift(logs)).toEqual({ peakDrivingMinutes: 6 * 60, peakWindowMinutes: 15 * 60 });
+  });
+
+  test('time off duty after the last work is not part of the window', () => {
+    const logs = [day('2026-10-05', [seg('DRIVING', '2026-10-05T08:00:00Z', '2026-10-05T10:00:00Z'), seg('OFF_DUTY', '2026-10-05T10:00:00Z', '2026-10-06T00:00:00Z')])];
+    expect(peakShift(logs)).toEqual({ peakDrivingMinutes: 120, peakWindowMinutes: 120 });
+  });
+
+  test('empty input does not throw', () => {
+    expect(peakShift(undefined)).toEqual({ peakDrivingMinutes: 0, peakWindowMinutes: 0 });
   });
 });
