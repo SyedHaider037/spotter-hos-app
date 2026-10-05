@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import EldLogSheet from './components/EldLogSheet';
 import TripMap from './components/TripMap';
+import { describeStops, timeZoneLabel } from './utils/stops';
 
 // Backend base URL. Override with REACT_APP_API_URL (e.g. http://localhost:8000 for local dev).
 const API_URL = (
@@ -50,21 +51,6 @@ async function postPlan(payload) {
   }
 }
 
-function formatDurationMinutes(mins) {
-  const n = Number(mins);
-  if (!Number.isFinite(n)) return '';
-  if (n === 0) return '0 min';
-  if (n < 60) return `${n} min`;
-  if (n % 60 === 0) {
-    const h = n / 60;
-    return h === 1 ? '1 hr' : `${h} hrs`;
-  }
-  const h = Math.floor(n / 60);
-  const m = n % 60;
-  const hPart = h === 1 ? '1 hr' : `${h} hrs`;
-  return `${hPart} ${m} min`;
-}
-
 function App() {
   const [currentLocation, setCurrentLocation] = useState('Chicago, IL');
   const [pickupLocation, setPickupLocation] = useState('Dallas, TX');
@@ -96,7 +82,9 @@ function App() {
   }, [loading]);
 
   const dailyLogs = result?.daily_logs || [];
-  const stops = result?.stops || [];
+  const stops = useMemo(() => result?.stops || [], [result]);
+  const stopDays = useMemo(() => describeStops(stops), [stops]);
+  const zoneLabel = useMemo(() => timeZoneLabel(), []);
 
   const canSubmit = useMemo(() => {
     return (
@@ -250,21 +238,26 @@ function App() {
             <div className="Card">
               <div className="CardHeader">
                 <h2 className="CardTitle">Stops</h2>
-                <div className="CardSubtitle">{stops.length} items</div>
+                <div className="CardSubtitle">
+                  {stops.length} stops · times in {zoneLabel}
+                </div>
               </div>
               <div className="StopsList">
-                {stops.map((s, idx) => (
-                  <div className="StopRow" key={`${s.type}-${idx}`}>
-                    <div className="StopType">{s.type}</div>
-                    <div className="StopMain">
-                      <div className="StopLoc">{s.location}</div>
-                      <div className="StopMeta">
-                        <span>{s.start_time}</span>
-                        <span className="Dot">•</span>
-                        <span>{formatDurationMinutes(s.duration)}</span>
-                      </div>
+                {stopDays.map((day) => (
+                  <section className="StopDay" key={day.key}>
+                    <h3 className="StopDayTitle">{day.label}</h3>
+                    <div className="StopDayRows">
+                      {day.items.map((item) => (
+                        <div className="StopRow" key={item.id}>
+                          <div className="StopTime">{item.time}</div>
+                          <div className="StopBody">
+                            <div className="StopTitle">{item.title}</div>
+                            {item.detail ? <div className="StopDetail">{item.detail}</div> : null}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  </section>
                 ))}
               </div>
             </div>
@@ -286,6 +279,10 @@ function App() {
                   dayCount={dailyLogs.length}
                 />
               ))}
+              <p className="LogSheetNote">
+                Hours before the trip starts and after the final dropoff are shown as off duty, so every day adds up
+                to 24:00.
+              </p>
             </div>
           ) : null}
         </div>

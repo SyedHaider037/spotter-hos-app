@@ -3,16 +3,7 @@ import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents 
 import L from 'leaflet';
 
 import { decodePolyline } from '../utils/polyline';
-
-function formatDurationMinutes(mins) {
-  if (typeof mins !== 'number' || Number.isNaN(mins)) return '';
-  if (mins === 0) return '0 min';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h && m) return `${h} hrs ${m} min`;
-  if (h) return h === 1 ? '1 hr' : `${h} hrs`;
-  return `${m} min`;
-}
+import { describeStop } from '../utils/stops';
 
 function safeLatLng(stop) {
   const lat = Number(stop?.lat);
@@ -38,8 +29,9 @@ const CLUSTER_RADIUS_PX = 26; // markers closer than this on screen are shown as
 
 // Valid stops with their position, in trip order.
 function locatedStops(stops) {
-  return (Array.isArray(stops) ? stops : [])
-    .map((stop) => ({ stop, pos: safeLatLng(stop) }))
+  const list = Array.isArray(stops) ? stops : [];
+  return list
+    .map((stop, index) => ({ stop, pos: safeLatLng(stop), info: describeStop(stop, list[index - 1]) }))
     .filter((item) => item.pos);
 }
 
@@ -76,6 +68,7 @@ function StopMarkers({ items }) {
 
   return clusters.map((cluster) => {
     const groupStops = cluster.items.map((i) => i.stop);
+    const infos = cluster.items.map((i) => i.info);
     return (
       <Marker
         key={`${cluster.pos[0]},${cluster.pos[1]}`}
@@ -86,20 +79,12 @@ function StopMarkers({ items }) {
       >
         <Popup>
           <div style={{ minWidth: 220 }}>
-            {groupStops.map((stop, idx) => (
-              <div key={`${stop.type}-${idx}`} style={{ marginBottom: idx < groupStops.length - 1 ? 10 : 0 }}>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>{stop.type || 'STOP'}</div>
-                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 6 }}>{stop.location}</div>
-                <div style={{ fontSize: 12 }}>
-                  <div>
-                    <strong>Start:</strong> {stop.start_time || ''}
-                  </div>
-                  <div>
-                    <strong>End:</strong> {stop.end_time || ''}
-                  </div>
-                  <div>
-                    <strong>Duration:</strong> {formatDurationMinutes(stop.duration)}
-                  </div>
+            {infos.map((info, idx) => (
+              <div key={`${info.type}-${idx}`} style={{ marginBottom: idx < infos.length - 1 ? 10 : 0 }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>{info.title}</div>
+                {info.detail ? <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 6 }}>{info.detail}</div> : null}
+                <div className="PopupTimes" style={{ fontSize: 12 }}>
+                  <div>{info.endDateTime ? `${info.dateTime} to ${info.endDateTime}` : info.dateTime}</div>
                 </div>
               </div>
             ))}

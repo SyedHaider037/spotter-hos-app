@@ -144,11 +144,25 @@
   padding: 8px 8px 10px;
 }
 
+.StopDay + .StopDay {
+  margin-top: 12px;
+}
+
+.StopDayTitle {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #526077;
+}
+
 .StopRow {
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 76px 1fr;
   gap: 10px;
-  padding: 10px;
+  padding: 8px 10px;
   border-radius: 10px;
 }
 
@@ -156,29 +170,29 @@
   background: #f8fafc;
 }
 
-.StopType {
-  font-size: 12px;
-  font-weight: 900;
-  color: #1f2937;
+.StopTime {
+  font-size: 13px;
+  color: #526077;
 }
 
-.StopLoc {
+.StopTitle {
   font-weight: 700;
   font-size: 13px;
 }
 
-.StopMeta {
-  margin-top: 2px;
+.StopDetail {
   font-size: 12px;
   color: #526077;
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
-.Dot {
-  opacity: 0.6;
+/* Tabular numerals wherever times and durations line up in columns. */
+.StopTime,
+.StopDetail,
+.LogRemarkTime,
+.LogSheetHour,
+.PopupTimes,
+.Input[type='number'] {
+  font-variant-numeric: tabular-nums;
 }
 
 .StopMarkerWrap {
@@ -300,9 +314,11 @@
 }
 
 .LogSheetNote {
-  margin-top: 10px;
+  margin: 0;
+  max-width: 70ch;
   font-size: 12px;
   color: #526077;
+  text-wrap: pretty;
 }
 
 @media (max-width: 600px) {

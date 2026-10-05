@@ -98,7 +98,7 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
 
           {/* Hour scale */}
           {Array.from({ length: 25 }, (_, h) => (
-            <text key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fill="#526077">
+            <text className="LogSheetHour" key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fontSize="11" fill="#526077">
               {hourLabel(h)}
             </text>
           ))}
@@ -205,9 +205,6 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
           </div>
         ) : null}
 
-        <div className="LogSheetNote">
-          Time before the trip starts and after the final dropoff is shown as off duty so each day adds up to 24 hours.
-        </div>
       </div>
     </div>
   );
