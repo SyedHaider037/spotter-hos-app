@@ -14,14 +14,14 @@ function safeLatLng(stop) {
 
 // One-letter badge per stop type, in priority order for stops that share a location.
 const STOP_BADGES = {
-  DROPOFF: { letter: 'D', className: 'StopMarker--destination' },
-  PICKUP: { letter: 'P', className: 'StopMarker--destination' },
+  DROPOFF: { letter: 'D', className: 'StopMarker--place' },
+  PICKUP: { letter: 'P', className: 'StopMarker--place' },
   CURRENT: { letter: 'S', className: 'StopMarker--start' },
   REST_10: { letter: 'R', className: '' },
   RESTART_34: { letter: 'R', className: '' },
   BREAK_30: { letter: 'B', className: '' },
   FUEL: { letter: 'F', className: '' },
-  ON_DUTY: { letter: 'P', className: 'StopMarker--destination' },
+  ON_DUTY: { letter: 'P', className: 'StopMarker--place' },
 };
 const BADGE_PRIORITY = ['DROPOFF', 'PICKUP', 'CURRENT', 'RESTART_34', 'REST_10', 'BREAK_30', 'FUEL', 'ON_DUTY'];
 
@@ -146,10 +146,56 @@ export default function TripMap({ stops, route }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {routePoints.length >= 2 ? <Polyline positions={routePoints} pathOptions={{ color: '#2563eb', weight: 4 }} /> : null}
+          {routePoints.length >= 2 ? (
+            <>
+              {/* A light casing under the line keeps it readable over any map color. */}
+              <Polyline positions={routePoints} pathOptions={{ className: 'RouteCasing', weight: 8, lineCap: 'round' }} />
+              <Polyline positions={routePoints} pathOptions={{ className: 'RouteLine', weight: 4, lineCap: 'round' }} />
+            </>
+          ) : null}
 
           <StopMarkers items={items} />
         </MapContainer>
+
+        <ul className="MapLegend" aria-label="Map legend">
+          <li className="MapLegendItem">
+            <span className="LegendRoute" aria-hidden="true" />
+            Driving route
+          </li>
+          <li className="MapLegendItem">
+            <span className="StopMarker StopMarker--start LegendMarker" aria-hidden="true">
+              S
+            </span>
+            Start
+          </li>
+          <li className="MapLegendItem">
+            <span className="StopMarker StopMarker--place LegendMarker" aria-hidden="true">
+              P
+            </span>
+            <span className="StopMarker StopMarker--place LegendMarker" aria-hidden="true">
+              D
+            </span>
+            Pickup, dropoff
+          </li>
+          <li className="MapLegendItem">
+            <span className="StopMarker LegendMarker" aria-hidden="true">
+              R
+            </span>
+            <span className="StopMarker LegendMarker" aria-hidden="true">
+              B
+            </span>
+            <span className="StopMarker LegendMarker" aria-hidden="true">
+              F
+            </span>
+            Rest, break, fuel
+          </li>
+          <li className="MapLegendItem">
+            <span className="LegendCount" aria-hidden="true">
+              2
+            </span>
+            Several stops here; zoom in to separate them
+          </li>
+        </ul>
       </div>
     </div>
   );

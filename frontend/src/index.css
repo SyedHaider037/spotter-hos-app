@@ -1,10 +1,20 @@
 /*
   Design tokens.
+
   Type scale: 12 / 14 / 16 / 20 / 28 px, weights 400 / 500 / 600 only.
-  Colors are semantic (named by role, not by hue); components reference these, never raw hex values.
+
+  Colors come in two tiers. Primitives (--neutral-*, --blue-*, ...) are the raw ramps and are only referenced
+  from the semantic tokens below them. Components use the semantic tokens (named by role) and never a raw hex.
+
+  Color roles:
+    neutral ramp   surfaces, text, borders, grid lines
+    accent (blue)  reserved for things you can interact with: the primary button, focus rings, links
+    duty status    driving (green), on duty (amber), off duty (slate), sleeper berth (violet): one hue per status,
+                   none of them the accent blue; used by the log sheets and the map so a color means one thing
+    feedback       errors
 */
 :root {
-  /* Type scale */
+  /* ---- Type scale ---- */
   --text-xs: 12px; /* captions, labels, small metadata */
   --text-sm: 14px; /* body and data */
   --text-md: 16px; /* card titles, key figures */
@@ -21,41 +31,79 @@
   --tracking-tight: -0.01em; /* titles */
   --tracking-caps: 0.04em; /* small uppercase labels */
 
+  /* ---- Primitive ramps ---- */
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-600: #526077; /* muted text: 6.4:1 on white */
+  --neutral-700: #334155;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+
+  --blue-400: #60a5fa;
+  --blue-600: #2563eb;
+
+  --green-700: #15803d;
+  --amber-700: #b45309;
+  --violet-700: #6d28d9;
+
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-700: #b91c1c;
+
+  /* ---- Semantic tokens ---- */
+
   /* Surfaces */
-  --color-bg-page: #f8fafc;
-  --color-bg-surface: #ffffff;
+  --color-bg-page: var(--neutral-50);
+  --color-bg-surface: var(--neutral-0);
   --color-bg-glass: rgba(255, 255, 255, 0.9);
-  --color-bg-row: #f8fafc;
+  --color-bg-row: var(--neutral-50);
+  --color-bg-inverse: var(--neutral-900);
 
   /* Text */
-  --color-text: #0f172a;
-  --color-text-muted: #526077;
-  --color-text-label: #334155;
-  --color-text-on-accent: #ffffff;
+  --color-text: var(--neutral-900);
+  --color-text-muted: var(--neutral-600);
+  --color-text-label: var(--neutral-700);
+  --color-text-inverse: var(--neutral-0);
+  --color-text-on-accent: var(--neutral-0);
 
-  /* Borders */
-  --color-border: #e5e7eb;
-  --color-border-subtle: #eef2f7;
-  --color-border-input: #dbe3ee;
-  --color-border-dashed: #cbd5e1;
+  /* Borders and grid lines */
+  --color-border: var(--neutral-200);
+  --color-border-subtle: var(--neutral-100);
+  --color-border-input: var(--neutral-300);
+  --color-border-dashed: var(--neutral-300);
+  --color-border-strong: var(--neutral-400);
 
-  /* Interactive accent */
-  --color-accent: #2563eb;
-  --color-accent-focus-border: #60a5fa;
-  --color-accent-focus-ring: rgba(37, 99, 235, 0.12);
+  /* Interactive accent (buttons, focus, links only) */
+  --color-accent: var(--blue-600);
+  --color-accent-focus-border: var(--blue-400);
+  --color-accent-focus-ring: rgba(37, 99, 235, 0.15);
+  --color-link: var(--blue-600);
+
+  /* Duty status */
+  --color-status-driving: var(--green-700);
+  --color-status-on-duty: var(--amber-700);
+  --color-status-off-duty: var(--neutral-800);
+  --color-status-sleeper: var(--violet-700);
+
+  /* Map: the route is the driving color; markers follow the duty status of what happens there */
+  --color-route: var(--color-status-driving);
+  --color-route-casing: var(--neutral-0);
+  --color-marker-start: var(--color-status-driving);
+  --color-marker-place: var(--color-status-on-duty); /* pickup and dropoff */
+  --color-marker-rest: var(--color-status-off-duty); /* rest, break, fuel */
+  --color-marker-ring: var(--neutral-0);
 
   /* Feedback */
-  --color-error-text: #b91c1c;
-  --color-error-bg: #fef2f2;
-  --color-error-border: #fee2e2;
-  --color-notice-text: #1d4ed8;
-  --color-notice-bg: #eff6ff;
-  --color-notice-border: #bfdbfe;
-
-  /* Map markers */
-  --color-marker: #0f172a;
-  --color-marker-destination: #2563eb;
-  --color-marker-ring: #ffffff;
+  --color-error-text: var(--red-700);
+  --color-error-bg: var(--red-50);
+  --color-error-border: var(--red-100);
+  --color-notice-text: var(--neutral-700);
+  --color-notice-bg: var(--neutral-100);
+  --color-notice-border: var(--neutral-200);
 
   /* Elevation */
   --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);

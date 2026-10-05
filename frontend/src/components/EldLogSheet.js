@@ -16,13 +16,6 @@ const GRID_BOTTOM = GRID_Y + GRID_H;
 const LANE_H = 20;
 const MARKER_R = 9;
 
-const STATUS_COLOR = {
-  DRIVING: '#2563eb',
-  ON_DUTY: '#b45309',
-  SLEEPER: '#0f766e',
-  OFF_DUTY: '#111827',
-};
-
 const xFor = (minute) => GRID_X + (minute / MINUTES_PER_DAY) * GRID_W;
 const yFor = (status) => GRID_Y + rowIndex(status) * ROW_H + ROW_H / 2;
 
@@ -98,50 +91,50 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
 
           {/* Hour scale */}
           {Array.from({ length: 25 }, (_, h) => (
-            <text className="LogSheetHour" key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle" fill="#526077">
+            <text className="LogSheetHour" key={`h${h}`} x={xFor(h * 60)} y={GRID_Y - 10} textAnchor="middle">
               {hourLabel(h)}
             </text>
           ))}
 
           {/* Grid */}
-          <rect x={GRID_X} y={GRID_Y} width={GRID_W} height={GRID_H} fill="#ffffff" stroke="#94a3b8" />
+          <rect className="LogGridBox" x={GRID_X} y={GRID_Y} width={GRID_W} height={GRID_H} />
           {Array.from({ length: 23 }, (_, i) => (
             <line
+              className={(i + 1) % 12 === 0 ? 'LogGridLine LogGridLine--noon' : 'LogGridLine'}
               key={`v${i + 1}`}
               x1={xFor((i + 1) * 60)}
               x2={xFor((i + 1) * 60)}
               y1={GRID_Y}
               y2={GRID_BOTTOM}
-              stroke={(i + 1) % 12 === 0 ? '#94a3b8' : '#e2e8f0'}
             />
           ))}
           {ROWS.slice(1).map((r, i) => (
-            <line key={`r${r.key}`} x1={GRID_X} x2={GRID_X + GRID_W} y1={GRID_Y + (i + 1) * ROW_H} y2={GRID_Y + (i + 1) * ROW_H} stroke="#94a3b8" />
+            <line className="LogGridRowLine" key={`r${r.key}`} x1={GRID_X} x2={GRID_X + GRID_W} y1={GRID_Y + (i + 1) * ROW_H} y2={GRID_Y + (i + 1) * ROW_H} />
           ))}
-          <path d={TICKS} stroke="#94a3b8" strokeWidth="1" fill="none" />
+          <path className="LogGridTicks" d={TICKS} />
 
           {/* Row labels and totals */}
           {ROWS.map((r, i) => (
             <g key={`label${r.key}`}>
-              <text className="LogSheetRowLabel" x={GRID_X - 10} y={GRID_Y + i * ROW_H + ROW_H / 2 + 4} textAnchor="end" fill="#0f172a">
+              <rect className="LogRowKey" data-status={r.key} x={6} y={GRID_Y + i * ROW_H + ROW_H / 2 - 5} width="10" height="10" rx="2" />
+              <text className="LogSheetRowLabel" x={GRID_X - 10} y={GRID_Y + i * ROW_H + ROW_H / 2 + 4} textAnchor="end">
                 {r.label}
               </text>
-              <rect x={TOTAL_X} y={GRID_Y + i * ROW_H} width={TOTAL_W} height={ROW_H} fill="#ffffff" stroke="#94a3b8" />
+              <rect className="LogTotalBox" x={TOTAL_X} y={GRID_Y + i * ROW_H} width={TOTAL_W} height={ROW_H} />
               <text
                 className="LogSheetTotal LogSheetRowTotal"
                 x={TOTAL_X + TOTAL_W / 2}
                 y={GRID_Y + i * ROW_H + ROW_H / 2 + 5}
                 textAnchor="middle"
-                fill="#0f172a"
               >
                 {formatDuration(sheet.totals[r.key])}
               </text>
             </g>
           ))}
-          <text className="LogSheetColHead" x={TOTAL_X + TOTAL_W / 2} y={GRID_Y - 10} textAnchor="middle" fill="#526077">
+          <text className="LogSheetColHead" x={TOTAL_X + TOTAL_W / 2} y={GRID_Y - 10} textAnchor="middle">
             Total hours
           </text>
-          <text className="LogSheetTotal LogSheetGrand" x={TOTAL_X + TOTAL_W / 2} y={GRID_BOTTOM + 18} textAnchor="middle" fill="#0f172a">
+          <text className="LogSheetTotal LogSheetGrand" x={TOTAL_X + TOTAL_W / 2} y={GRID_BOTTOM + 18} textAnchor="middle">
             = {formatDuration(totalAll)}
           </text>
 
@@ -155,7 +148,6 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
               x2={xFor(run.end)}
               y1={yFor(run.status)}
               y2={yFor(run.status)}
-              stroke={STATUS_COLOR[run.status]}
               strokeWidth="4"
             />
           ))}
@@ -167,7 +159,6 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
               x2={xFor(c.minute)}
               y1={yFor(c.from)}
               y2={yFor(c.to)}
-              stroke="#0f172a"
               strokeWidth="2"
             />
           ))}
@@ -177,9 +168,9 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
             const cy = GRID_BOTTOM + 14 + r.lane * LANE_H + MARKER_R;
             return (
               <g key={`rm${r.number}`} className="LogSheetMarker">
-                <line x1={r.x} x2={r.x} y1={GRID_BOTTOM} y2={cy - MARKER_R} stroke="#0f172a" strokeWidth="1" />
-                <circle cx={r.x} cy={cy} r={MARKER_R} fill="#0f172a" />
-                <text className="LogSheetMarkerNum" x={r.x} y={cy + 4} textAnchor="middle" fill="#ffffff">
+                <line className="LogMarkerTick" x1={r.x} x2={r.x} y1={GRID_BOTTOM} y2={cy - MARKER_R} strokeWidth="1" />
+                <circle className="LogMarkerDot" cx={r.x} cy={cy} r={MARKER_R} />
+                <text className="LogSheetMarkerNum" x={r.x} y={cy + 4} textAnchor="middle">
                   {r.number}
                 </text>
               </g>

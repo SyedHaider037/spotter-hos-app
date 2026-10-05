@@ -133,6 +133,7 @@
   font-size: var(--text-sm);
 }
 
+/* Informational, not interactive: neutral, so the accent blue keeps meaning "you can act on this". */
 .Notice {
   padding: 10px 12px;
   border-radius: 10px;
@@ -197,6 +198,8 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Map markers: colored by the duty status of what happens there (start = driving, pickup/dropoff = on duty,
+   rest/break/fuel = off duty), never the interactive accent ---- */
 .StopMarkerWrap {
   background: transparent;
   border: 0;
@@ -209,18 +212,21 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--color-marker);
+  background: var(--color-marker-rest);
   border: 2px solid var(--color-marker-ring);
   box-shadow: var(--shadow-marker);
-  color: var(--color-text-on-accent);
+  color: var(--color-text-inverse);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   line-height: 1;
 }
 
-.StopMarker--destination,
 .StopMarker--start {
-  background: var(--color-marker-destination);
+  background: var(--color-marker-start);
+}
+
+.StopMarker--place {
+  background: var(--color-marker-place);
 }
 
 .StopMarkerCount {
@@ -232,22 +238,82 @@
   padding: 0 3px;
   border-radius: 8px;
   background: var(--color-bg-surface);
-  border: 1px solid var(--color-marker);
-  color: var(--color-marker);
+  border: 1px solid var(--color-text);
+  color: var(--color-text);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   line-height: 14px;
   text-align: center;
 }
 
+/* Route: the driving color, over a light casing so it reads on any map background. */
+.leaflet-container path.RouteCasing {
+  stroke: var(--color-route-casing);
+  stroke-opacity: 0.9;
+}
+
+.leaflet-container path.RouteLine {
+  stroke: var(--color-route);
+  stroke-opacity: 1;
+}
+
 .MapWrap {
   padding: 10px;
 }
 
-/* Map text follows the app's type, not Leaflet's own defaults. */
+.MapLegend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.MapLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.LegendMarker {
+  width: 22px;
+  height: 22px;
+  box-shadow: none;
+}
+
+.LegendRoute {
+  display: inline-block;
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-route);
+}
+
+.LegendCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-text);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+/* Map text follows the app's type and colors, not Leaflet's own defaults. */
 .leaflet-container {
   font-family: inherit;
   font-size: var(--text-xs);
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-link);
 }
 
 /* Zoom buttons: Leaflet defaults to 22px bold monospace, which is outside the type scale. */
@@ -278,6 +344,7 @@
   font-size: var(--text-xs);
 }
 
+/* ---- Log sheet ---- */
 .LogSheetBody {
   padding: 10px 14px 14px;
 }
@@ -288,35 +355,104 @@
   height: auto;
 }
 
+/* The SVG takes its colors from the same tokens as the rest of the app, so one change updates both. */
+.LogGridBox,
+.LogTotalBox {
+  fill: var(--color-bg-surface);
+  stroke: var(--color-border-strong);
+}
+
+.LogGridLine {
+  stroke: var(--color-border);
+}
+
+.LogGridLine--noon,
+.LogGridRowLine {
+  stroke: var(--color-border-strong);
+}
+
+.LogGridTicks {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  fill: none;
+}
+
+.LogSheetRun[data-status='DRIVING'] {
+  stroke: var(--color-status-driving);
+}
+
+.LogSheetRun[data-status='ON_DUTY'] {
+  stroke: var(--color-status-on-duty);
+}
+
+.LogSheetRun[data-status='SLEEPER'] {
+  stroke: var(--color-status-sleeper);
+}
+
+.LogSheetRun[data-status='OFF_DUTY'] {
+  stroke: var(--color-status-off-duty);
+}
+
+.LogSheetChange,
+.LogMarkerTick {
+  stroke: var(--color-text);
+}
+
+.LogRowKey[data-status='DRIVING'] {
+  fill: var(--color-status-driving);
+}
+
+.LogRowKey[data-status='ON_DUTY'] {
+  fill: var(--color-status-on-duty);
+}
+
+.LogRowKey[data-status='SLEEPER'] {
+  fill: var(--color-status-sleeper);
+}
+
+.LogRowKey[data-status='OFF_DUTY'] {
+  fill: var(--color-status-off-duty);
+}
+
+.LogMarkerDot {
+  fill: var(--color-bg-inverse);
+}
+
 /* Text inside the log sheet SVG: sizes come from the type scale (the SVG scales with its card). */
 .LogSheetHour {
   font-size: var(--text-xs);
   font-weight: var(--weight-regular);
+  fill: var(--color-text-muted);
 }
 
 .LogSheetRowLabel {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+  fill: var(--color-text);
 }
 
 .LogSheetColHead {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
+  fill: var(--color-text-muted);
 }
 
 .LogSheetRowTotal {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
+  fill: var(--color-text);
 }
 
 .LogSheetGrand {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
+  fill: var(--color-text);
 }
 
 .LogSheetMarkerNum {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
+  fill: var(--color-text-inverse);
 }
 
 .LogSheetTotal {
@@ -361,8 +497,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--color-marker);
-  color: var(--color-text-on-accent);
+  background: var(--color-bg-inverse);
+  color: var(--color-text-inverse);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }
