@@ -17,7 +17,7 @@ Rules enforced (from PRD):
   - 14 hr shift window
   - 10 hr rest between shifts
   - 30 min break after 8 cumulative driving hours
-  - 70 hr / 8 day cycle limit
+  - 70 hr cycle limit (flat budget); a 34 hr restart is inserted when it is reached mid-trip
   - Fuel stop every 1000 miles
   - 1 hr On Duty at pickup
   - 1 hr On Duty at dropoff
@@ -36,7 +36,7 @@ from . import hos_rules
 from .route_service import RouteServiceError, RouteResult, get_route, reverse_geocode
 
 
-StopType = Literal["CURRENT", "PICKUP", "DROPOFF", "BREAK_30", "REST_10", "FUEL", "ON_DUTY"]
+StopType = Literal["CURRENT", "PICKUP", "DROPOFF", "BREAK_30", "REST_10", "RESTART_34", "FUEL", "ON_DUTY"]
 DutyStatus = Literal["OFF_DUTY", "SLEEPER", "ON_DUTY", "DRIVING"]
 
 
@@ -70,6 +70,10 @@ class DailyLog(TypedDict):
 
 class TripPlannerError(RuntimeError):
     pass
+
+
+# Float slack when comparing accumulated cycle hours against the cap.
+CYCLE_EPSILON_HOURS = 1e-6
 
 
 @dataclass
@@ -268,8 +272,8 @@ def plan_trip(
     """
     if cycle_used_hours < 0:
         raise TripPlannerError("cycle_used_hours must be >= 0.")
-    if hos_rules.cycle_limit_reached(cycle_used_hours):
-        raise TripPlannerError("Cycle limit already reached; cannot plan trip.")
+    if cycle_used_hours > hos_rules.MAX_CYCLE_HOURS:
+        raise TripPlannerError(f"cycle_used_hours cannot exceed {hos_rules.MAX_CYCLE_HOURS}.")
 
     # Clock starts "now" in UTC unless the caller supplies a start time.
     now = start_time if start_time is not None else datetime.now(timezone.utc)
@@ -290,7 +294,10 @@ def plan_trip(
 
     # Initial marker stop (0 duration).
     start_lat, start_lng = legs[0].points[0]
-    add_event(now, "Start trip, driving", start_lat, start_lng, current_location)
+    # A driver who starts with the whole cycle used cannot drive until a 34-hour restart, so the trip begins with one.
+    starts_at_cap = hos_rules.cycle_limit_reached(cycle_used_hours)
+    if not starts_at_cap:
+        add_event(now, "Start trip, driving", start_lat, start_lng, current_location)
     _add_stop(stops, stop_type="CURRENT", location=current_location, lat=start_lat, lng=start_lng, start=now, end=now)
 
     # State tracked in hours / miles.
@@ -302,10 +309,29 @@ def plan_trip(
     cycle_used = float(cycle_used_hours)
 
     def ensure_cycle_capacity(added_hours: float) -> None:
+        # Callers restart before the cap is hit, so reaching this error means a planner bug, not a long trip.
         nonlocal cycle_used
-        if cycle_used + added_hours > hos_rules.MAX_CYCLE_HOURS:
+        if cycle_used + added_hours > hos_rules.MAX_CYCLE_HOURS + CYCLE_EPSILON_HOURS:
             raise TripPlannerError("Trip would exceed 70-hour/8-day cycle limit.")
         cycle_used += added_hours
+
+    def do_restart_34h(
+        lat: float, lng: float, resume: str | None = "Resume driving", place: str | None = None
+    ) -> None:
+        """34 consecutive hours off duty: resets the 70-hour cycle as well as the daily driving/shift clocks."""
+        nonlocal time_cursor, driving_today, shift_start, driving_since_break, cycle_used
+        start = time_cursor
+        end = time_cursor + timedelta(hours=hos_rules.RESTART_HOURS)
+        add_event(start, "34-hour restart (off duty)", lat, lng, place)
+        if resume:
+            add_event(end, resume, lat, lng)
+        _add_segment(segments, "OFF_DUTY", start, end)
+        _add_stop(stops, stop_type="RESTART_34", location="34-hour restart", lat=lat, lng=lng, start=start, end=end)
+        time_cursor = end
+        driving_today = 0.0
+        driving_since_break = 0.0
+        shift_start = end
+        cycle_used = 0.0
 
     def do_rest_10h(lat: float, lng: float) -> None:
         nonlocal time_cursor, driving_today, shift_start, driving_since_break
@@ -345,6 +371,9 @@ def plan_trip(
         hours: float, label: str, stop_type: StopType, lat: float, lng: float, place: str, arrive: str, depart: str
     ) -> None:
         nonlocal time_cursor
+        if cycle_used + hours > hos_rules.MAX_CYCLE_HOURS + CYCLE_EPSILON_HOURS:
+            # Arrived with the cycle exhausted: wait out a 34-hour restart before loading/unloading.
+            do_restart_34h(lat, lng, resume=None)
         dur = timedelta(hours=hours)
         start = time_cursor
         end = time_cursor + dur
@@ -360,7 +389,8 @@ def plan_trip(
         remaining_shift = hos_rules.MAX_SHIFT_HOURS - shift_elapsed
         remaining_drive = hos_rules.MAX_DRIVING_HOURS - driving_today
         remaining_break = hos_rules.BREAK_AFTER_HOURS - driving_since_break
-        return max(0.0, min(remaining_shift, remaining_drive, remaining_break))
+        remaining_cycle = hos_rules.MAX_CYCLE_HOURS - cycle_used
+        return max(0.0, min(remaining_shift, remaining_drive, remaining_break, remaining_cycle))
 
     def drive_for(leg: _Leg, hours: float) -> float:
         """
@@ -388,12 +418,22 @@ def plan_trip(
         miles_since_fuel += miles
         return miles
 
+    if starts_at_cap:
+        do_restart_34h(start_lat, start_lng, place=current_location)
+
     # Simulate each leg sequentially.
     for leg_index, leg in enumerate(legs):
         miles_remaining = leg.distance_miles
         miles_into_leg = 0.0
 
         while miles_remaining > 1e-6:
+            # Cycle exhausted mid-trip: take a 34-hour restart, which resets the cycle, and keep going.
+            if hos_rules.cycle_limit_reached(cycle_used + CYCLE_EPSILON_HOURS):
+                frac = (miles_into_leg / leg.distance_miles) if leg.distance_miles > 0 else 0.0
+                lat, lng = _interpolate_point(leg.points, frac)
+                do_restart_34h(lat, lng)
+                continue
+
             # Enforce shift/day constraints by resting if needed BEFORE driving.
             shift_elapsed = (time_cursor - shift_start).total_seconds() / 3600.0
             if hos_rules.shift_window_reached(shift_elapsed) or hos_rules.driving_limit_reached(driving_today):

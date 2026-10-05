@@ -148,14 +148,9 @@ class MultiDayTripTests(SimpleTestCase):
 
 
 class CycleLimitTests(SimpleTestCase):
-    def test_trip_exceeding_cycle_is_rejected(self):
-        # 20h driving + 2h on duty = 22h; 55 + 22 > 70.
-        with self.assertRaisesRegex(TripPlannerError, "70-hour"):
-            run_plan([fake_route(600, 10), fake_route(600, 10)], cycle_used_hours=55)
-
-    def test_cycle_already_at_limit_is_rejected(self):
-        with self.assertRaisesRegex(TripPlannerError, "Cycle limit already reached"):
-            run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=70)
+    def test_cycle_over_the_limit_is_rejected(self):
+        with self.assertRaisesRegex(TripPlannerError, "cannot exceed 70"):
+            run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=70.1)
 
     def test_negative_cycle_is_rejected(self):
         with self.assertRaises(TripPlannerError):
@@ -166,19 +161,35 @@ class CycleLimitTests(SimpleTestCase):
         result = run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=64)
         self.assertEqual(len(stops_of(result, "DROPOFF")), 1)
 
-    def test_api_returns_plan_failed_for_cycle_overflow(self):
+    def _post(self, cycle_used_hours):
         payload = {
             "current_location": "A",
             "pickup_location": "B",
             "dropoff_location": "C",
-            "cycle_used_hours": 55,
+            "cycle_used_hours": cycle_used_hours,
         }
         with mock.patch(PATCH_TARGET, side_effect=[fake_route(600, 10), fake_route(600, 10)]), mock.patch(
             REVERSE_TARGET, return_value="Testville, TS"
         ):
-            response = self.client.post("/api/plan/", payload, content_type="application/json")
+            return self.client.post("/api/plan/", payload, content_type="application/json")
+
+    def test_api_returns_plan_failed_when_cycle_is_over_the_limit(self):
+        response = self._post(70.1)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"]["code"], "PLAN_FAILED")
+        self.assertIn("cannot exceed 70", response.json()["error"]["message"])
+
+    def test_api_plans_a_trip_that_starts_at_exactly_70_hours(self):
+        response = self._post(70)
+        self.assertEqual(response.status_code, 200)
+        types = [stop["type"] for stop in response.json()["stops"]]
+        self.assertEqual(types[:2], ["CURRENT", "RESTART_34"])
+
+    def test_api_plans_a_trip_that_crosses_the_cap_with_a_restart(self):
+        response = self._post(55)
+        self.assertEqual(response.status_code, 200)
+        types = [stop["type"] for stop in response.json()["stops"]]
+        self.assertEqual(types.count("RESTART_34"), 1)
 
 
 class PickupDropoffTests(SimpleTestCase):
@@ -289,3 +300,163 @@ class RemarksTests(SimpleTestCase):
             plan_trip("A", "B", "C", 0, start_time=START)
         spots = [(round(c.args[0], 2), round(c.args[1], 2)) for c in reverse.call_args_list]
         self.assertEqual(len(spots), len(set(spots)))
+
+
+def cycle_hours_by_period(result, initial_cycle):
+    """On-duty (driving + on duty) hours accumulated in each stretch between 34-hour restarts."""
+    periods = [initial_cycle]
+    for seg in merged_segments(result):
+        hours = segment_hours(seg)
+        if seg["status"] == "OFF_DUTY" and hours >= 34 - 1e-6:
+            periods.append(0.0)
+        elif seg["status"] in ("DRIVING", "ON_DUTY"):
+            periods[-1] += hours
+    return periods
+
+
+class CycleRestartTests(SimpleTestCase):
+    """Hitting the 70-hour cap mid-trip inserts a 34-hour restart and the plan carries on."""
+
+    def plan_over_cap(self):
+        # 20h driving + 2h on duty = 22h; 55 + 22 > 70, so the cap is hit during the second leg.
+        return run_plan([fake_route(600, 10), fake_route(600, 10)], cycle_used_hours=55)
+
+    def test_trip_over_the_cap_is_planned_with_one_restart(self):
+        result = self.plan_over_cap()
+        restarts = stops_of(result, "RESTART_34")
+        self.assertEqual(len(restarts), 1)
+        self.assertEqual(restarts[0]["duration"], 34 * 60)
+        self.assertEqual(len(stops_of(result, "PICKUP")), 1)
+        self.assertEqual(len(stops_of(result, "DROPOFF")), 1)
+
+    def test_full_trip_is_still_driven_and_loaded(self):
+        result = self.plan_over_cap()
+        self.assertAlmostEqual(total_hours(result, "DRIVING"), 20.0, places=4)
+        self.assertAlmostEqual(total_hours(result, "ON_DUTY"), 2.0, places=4)
+
+    def test_restart_comes_exactly_when_the_cap_is_reached(self):
+        result = self.plan_over_cap()
+        first_period, second_period = cycle_hours_by_period(result, 55)
+        self.assertAlmostEqual(first_period, 70.0, places=4)
+        self.assertAlmostEqual(second_period, 22.0 + 55 - 70.0, places=4)
+
+    def test_cycle_never_exceeds_70_between_restarts(self):
+        result = self.plan_over_cap()
+        for hours in cycle_hours_by_period(result, 55):
+            self.assertLessEqual(hours, 70.0 + 1e-6)
+
+    def test_restart_is_34_hours_off_duty_in_the_daily_logs(self):
+        result = self.plan_over_cap()
+        restart = stops_of(result, "RESTART_34")[0]
+        off_duty = [
+            seg
+            for seg in merged_segments(result)
+            if seg["status"] == "OFF_DUTY" and seg["start"] == restart["start_time"]
+        ]
+        self.assertEqual(len(off_duty), 1)
+        self.assertAlmostEqual(segment_hours(off_duty[0]), 34.0, places=6)
+        self.assertEqual(off_duty[0]["end"], restart["end_time"])
+
+    def test_every_day_of_the_trip_has_a_log_sheet(self):
+        result = self.plan_over_cap()
+        dates = [d["date"] for d in result["daily_logs"]]
+        self.assertGreater(len(dates), 3)
+        days = [datetime.fromisoformat(d) for d in dates]
+        self.assertEqual([(b - a).days for a, b in zip(days, days[1:])], [1] * (len(days) - 1))
+
+    def test_daily_driving_and_break_limits_still_hold_across_the_restart(self):
+        result = self.plan_over_cap()
+        driving_since_rest = 0.0
+        since_break = 0.0
+        for seg in merged_segments(result):
+            hours = segment_hours(seg)
+            if seg["status"] == "DRIVING":
+                driving_since_rest += hours
+                since_break += hours
+                self.assertLessEqual(driving_since_rest, 11.0 + 1e-6)
+                self.assertLessEqual(since_break, 8.0 + 1e-6)
+            elif seg["status"] == "OFF_DUTY":
+                since_break = 0.0
+                if hours >= 10 - 1e-6:
+                    driving_since_rest = 0.0
+
+    def test_remarks_still_match_status_changes_with_a_restart(self):
+        result = self.plan_over_cap()
+        remarks = sorted(
+            (r for day in result["daily_logs"] for r in day["remarks"]), key=lambda r: r["time"]
+        )
+        segs = merged_segments(result)
+        changes = [segs[i]["start"] for i in range(1, len(segs)) if segs[i]["status"] != segs[i - 1]["status"]]
+        self.assertEqual([r["time"] for r in remarks], [segs[0]["start"], *changes, segs[-1]["end"]])
+        self.assertIn("34-hour restart (off duty)", [r["activity"] for r in remarks])
+
+    def test_a_very_long_trip_gets_a_restart_each_time_the_cap_is_hit(self):
+        # 160h driving + 2h on duty from a fresh cycle: the cap is hit at 70h and again at 140h.
+        result = run_plan([fake_route(4800, 80), fake_route(4800, 80)], cycle_used_hours=0)
+        self.assertEqual(len(stops_of(result, "RESTART_34")), 2)
+        for hours in cycle_hours_by_period(result, 0):
+            self.assertLessEqual(hours, 70.0 + 1e-6)
+        self.assertAlmostEqual(total_hours(result, "DRIVING"), 160.0, places=3)
+
+    def test_trip_that_exactly_fits_has_no_restart(self):
+        result = run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=64)
+        self.assertEqual(stops_of(result, "RESTART_34"), [])
+
+    def test_restart_taken_on_arrival_when_the_cap_is_hit_exactly_at_pickup(self):
+        # 66 + 4h driving = 70 on arrival, so the pickup hour needs a restart first.
+        result = run_plan([fake_route(240, 4), fake_route(120, 2)], cycle_used_hours=66)
+        types = [s["type"] for s in result["stops"]]
+        self.assertEqual(types, ["CURRENT", "PICKUP", "RESTART_34", "ON_DUTY", "DROPOFF", "ON_DUTY"])
+        remarks = [r["activity"] for d in result["daily_logs"] for r in d["remarks"]]
+        self.assertEqual(
+            remarks,
+            [
+                "Start trip, driving",
+                "34-hour restart (off duty)",
+                "Pickup, loading (on duty)",
+                "Leave pickup, driving",
+                "Dropoff, unloading (on duty)",
+                "Trip complete (off duty)",
+            ],
+        )
+
+    def test_a_trip_starting_at_exactly_70_begins_with_a_restart(self):
+        result = run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=70)
+        types = [s["type"] for s in result["stops"]]
+        self.assertEqual(types, ["CURRENT", "RESTART_34", "PICKUP", "ON_DUTY", "DROPOFF", "ON_DUTY"])
+        restart = stops_of(result, "RESTART_34")[0]
+        self.assertEqual(restart["start_time"], "2026-01-05T08:00:00Z")  # right at the trip start
+        self.assertEqual(restart["duration"], 34 * 60)
+        # Nothing is driven before the restart ends.
+        self.assertEqual(merged_segments(result)[0]["status"], "OFF_DUTY")
+        self.assertEqual(merged_segments(result)[1]["status"], "DRIVING")
+        self.assertEqual(merged_segments(result)[1]["start"], restart["end_time"])
+
+    def test_exactly_70_hours_still_accounts_for_the_whole_trip(self):
+        result = run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=70)
+        self.assertEqual(cycle_hours_by_period(result, 70), [70.0, 6.0])
+        self.assertAlmostEqual(total_hours(result, "DRIVING"), 4.0, places=6)
+        self.assertAlmostEqual(total_hours(result, "ON_DUTY"), 2.0, places=6)
+
+    def test_remarks_for_a_trip_starting_at_exactly_70_open_with_the_restart(self):
+        result = run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=70)
+        remarks = sorted((r for d in result["daily_logs"] for r in d["remarks"]), key=lambda r: r["time"])
+        self.assertEqual(
+            [r["activity"] for r in remarks],
+            [
+                "34-hour restart (off duty)",
+                "Resume driving",
+                "Pickup, loading (on duty)",
+                "Leave pickup, driving",
+                "Dropoff, unloading (on duty)",
+                "Trip complete (off duty)",
+            ],
+        )
+        self.assertEqual(remarks[0]["place"], "A")  # the location as typed, not a reverse lookup
+
+    def test_just_under_70_hours_restarts_after_the_first_few_minutes_of_driving(self):
+        result = run_plan([fake_route(120, 2), fake_route(120, 2)], cycle_used_hours=69.9)
+        self.assertEqual(len(stops_of(result, "RESTART_34")), 1)
+        self.assertEqual(
+            [round(h, 3) for h in cycle_hours_by_period(result, 69.9)], [70.0, round(6.0 - 0.1, 3)]
+        )

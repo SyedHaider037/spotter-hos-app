@@ -18,6 +18,7 @@ MIN_REST_HOURS: Final[int] = 10
 BREAK_AFTER_HOURS: Final[int] = 8
 BREAK_DURATION_MINUTES: Final[int] = 30
 MAX_CYCLE_HOURS: Final[int] = 70
+RESTART_HOURS: Final[int] = 34
 FUEL_INTERVAL_MILES: Final[int] = 1000
 PICKUP_DROPOFF_HOURS: Final[int] = 1
 

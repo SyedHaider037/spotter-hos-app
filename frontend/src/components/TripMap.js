@@ -27,11 +27,12 @@ const STOP_BADGES = {
   PICKUP: { letter: 'P', className: 'StopMarker--destination' },
   CURRENT: { letter: 'S', className: 'StopMarker--start' },
   REST_10: { letter: 'R', className: '' },
+  RESTART_34: { letter: 'R', className: '' },
   BREAK_30: { letter: 'B', className: '' },
   FUEL: { letter: 'F', className: '' },
   ON_DUTY: { letter: 'P', className: 'StopMarker--destination' },
 };
-const BADGE_PRIORITY = ['DROPOFF', 'PICKUP', 'CURRENT', 'REST_10', 'BREAK_30', 'FUEL', 'ON_DUTY'];
+const BADGE_PRIORITY = ['DROPOFF', 'PICKUP', 'CURRENT', 'RESTART_34', 'REST_10', 'BREAK_30', 'FUEL', 'ON_DUTY'];
 
 const CLUSTER_RADIUS_PX = 26; // markers closer than this on screen are shown as one marker
 
@@ -150,7 +151,7 @@ export default function TripMap({ stops, route }) {
     <div className="Card">
       <div className="CardHeader">
         <h2 className="CardTitle">Route map</h2>
-        <div className="CardSubtitle">Driving route with breaks, rests and fuel stops</div>
+        <div className="CardSubtitle">Driving route with breaks, rests, restarts and fuel stops</div>
       </div>
 
       <div className="MapWrap">

@@ -211,7 +211,7 @@ Each daily log's `remarks` list has one entry per duty-status change that day. `
 
 `route.legs` has one entry per leg (current → pickup, then pickup → dropoff). Each `polyline` is the road geometry from OpenRouteService as a [Google encoded polyline](https://developers.google.com/maps/documentation/utilities/polylinealgorithm) (1e-5 degree precision), which the frontend decodes and draws on the map.
 
-Stop `type` values include (among others): `CURRENT`, `PICKUP`, `DROPOFF`, `BREAK_30`, `REST_10`, `FUEL`, `ON_DUTY`. Segment `status` values: `OFF_DUTY`, `SLEEPER`, `ON_DUTY`, `DRIVING`.
+Stop `type` values include (among others): `CURRENT`, `PICKUP`, `DROPOFF`, `BREAK_30`, `REST_10`, `RESTART_34`, `FUEL`, `ON_DUTY`. Segment `status` values: `OFF_DUTY`, `SLEEPER`, `ON_DUTY`, `DRIVING`.
 
 **Client / validation errors — `400 Bad Request`**
 
@@ -219,12 +219,12 @@ Stop `type` values include (among others): `CURRENT`, `PICKUP`, `DROPOFF`, `BREA
 {
   "error": {
     "code": "PLAN_FAILED",
-    "message": "Human-readable reason (e.g. invalid field, ORS error, cycle limit exceeded)."
+    "message": "Human-readable reason (e.g. invalid field, ORS error, cycle_used_hours over 70)."
   }
 }
 ```
 
-A trip is rejected, rather than adjusted, when it would exceed the 70-hour cycle. For example, Chicago → Dallas → New York needs about 42 on-duty hours, so a `cycle_used_hours` above roughly 27 returns this error.
+A request is rejected when `cycle_used_hours` is **greater than 70**. A trip that reaches 70 hours along the way is planned: the response includes a `RESTART_34` stop (34 hours off duty) at the point the cap is hit, and a request with `cycle_used_hours` of exactly 70 begins with the restart. For example, Chicago → Dallas → New York needs about 42 on-duty hours, so a `cycle_used_hours` above roughly 27 now produces a plan with a restart instead of an error.
 
 **Server errors — `500 Internal Server Error`**
 
@@ -249,7 +249,7 @@ The planner applies these constraints (see `backend/trip/services/hos_rules.py` 
 | On-duty / driving shift window | **14 hours** |
 | Minimum rest between shifts | **10 hours** |
 | Break after cumulative driving | **30 minutes** after **8 hours** driving |
-| Cycle limit | **70 hours** (a flat budget; see Known limitations) |
+| Cycle limit | **70 hours** (a flat budget); a **34-hour restart** is inserted when it is reached mid-trip |
 | Fuel stop interval | Every **1,000 miles** |
 | Pickup / dropoff | **1 hour** on duty each |
 
@@ -259,7 +259,7 @@ The planner applies these constraints (see `backend/trip/services/hos_rules.py` 
 
 ## Known limitations
 
-- **Flat 70-hour budget.** The cycle limit is a single running total, not a rolling 8-day window, and there is no 34-hour restart. A trip that would exceed the budget is rejected instead of being planned around a restart.
+- **Flat 70-hour budget.** The cycle limit is a single running total, not a rolling 8-day window. When a trip reaches 70 hours, the planner inserts a 34-hour off-duty restart (which resets the whole budget) and keeps going. It does not model the 8-day recap, so hours that would roll off on a real log are ignored. A request with `cycle_used_hours` above 70 is rejected, and one at exactly 70 begins with a restart.
 - **Timing.** Trips start at the moment of the request, and daily logs split at UTC midnight rather than the driver's local day.
 - **Cold starts.** On the free hosting tier the first request after idle can take up to a minute.
 
