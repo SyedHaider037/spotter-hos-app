@@ -181,13 +181,15 @@ export default function EldLogSheet({ date, segments, remarks, dayIndex = 0, day
         {placed.length ? (
           <div className="LogRemarks">
             <div className="LogRemarksTitle">Remarks</div>
-            <ol className="LogRemarksList">
+            <ol className="LogRemarksList" style={{ '--remark-rows': Math.ceil(placed.length / 2) }}>
               {placed.map((r) => (
                 <li key={`rl${r.number}`} className="LogRemark">
                   <span className="LogRemarkNumber">{r.number}</span>
                   <span className="LogRemarkTime">{formatClock(r.time)}</span>
-                  <span className="LogRemarkPlace">{r.place}</span>
-                  <span className="LogRemarkActivity">{r.activity}</span>
+                  <span className="LogRemarkBody">
+                    <span className="LogRemarkPlace">{r.place}</span>
+                    <span className="LogRemarkActivity">{r.activity}</span>
+                  </span>
                 </li>
               ))}
             </ol>

@@ -31,6 +31,16 @@
   --tracking-tight: -0.01em; /* titles */
   --tracking-caps: 0.04em; /* small uppercase labels */
 
+  /* ---- Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 ----
+     Items inside a group sit 4-12px apart, groups inside a card 16px, cards and page sections 24px or more,
+     so the gap between groups is always clearly bigger than the gap inside one. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
   /* ---- Primitive ramps ---- */
   --neutral-0: #ffffff;
   --neutral-50: #f8fafc;

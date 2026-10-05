@@ -2,8 +2,11 @@ import './App.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import EldLogSheet from './components/EldLogSheet';
+import PlanPreview from './components/PlanPreview';
 import TripMap from './components/TripMap';
+import TripSummary from './components/TripSummary';
 import { describeStops, timeZoneLabel } from './utils/stops';
+import { summarizeTrip } from './utils/tripSummary';
 
 // Backend base URL. Override with REACT_APP_API_URL (e.g. http://localhost:8000 for local dev).
 const API_URL = (
@@ -60,6 +63,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [plannedCycleHours, setPlannedCycleHours] = useState(0); // the cycle hours the current result was planned with
   const [showWakeNotice, setShowWakeNotice] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0); // failed attempts so far during a cold-start retry
   const serverReached = useRef(false); // true once the API has answered at all
@@ -85,6 +89,13 @@ function App() {
   const stops = useMemo(() => result?.stops || [], [result]);
   const stopDays = useMemo(() => describeStops(stops), [stops]);
   const zoneLabel = useMemo(() => timeZoneLabel(), []);
+  const summary = useMemo(
+    () =>
+      result
+        ? summarizeTrip({ stops, dailyLogs: result.daily_logs, route: result.route, cycleUsedHours: plannedCycleHours })
+        : null,
+    [result, stops, plannedCycleHours]
+  );
 
   const canSubmit = useMemo(() => {
     return (
@@ -118,6 +129,7 @@ function App() {
         try {
           const data = await postPlan(payload);
           serverReached.current = true;
+          setPlannedCycleHours(payload.cycle_used_hours);
           setResult(data);
           return;
         } catch (err) {
@@ -165,6 +177,8 @@ function App() {
       </div>
 
       <div className="Layout">
+        {summary ? <TripSummary summary={summary} /> : null}
+
         <div className="Left">
           <div className="Card">
             <div className="CardHeader">
@@ -265,7 +279,7 @@ function App() {
         </div>
 
         <div className="Right">
-          {result ? <TripMap stops={stops} route={result.route} /> : <div className="EmptyState">Submit the form to see map + logs.</div>}
+          {result ? <TripMap stops={stops} route={result.route} /> : <PlanPreview />}
 
           {Array.isArray(dailyLogs) && dailyLogs.length ? (
             <div className="Stack">
