@@ -25,6 +25,33 @@ def _directions_response():
     return resp
 
 
+class EndpointTests(SimpleTestCase):
+    """The deprecated api.openrouteservice.org host has a reduced quota and is being shut down."""
+
+    def test_all_endpoints_use_the_heigit_host(self):
+        for url in (route_service.GEOCODE_URL, route_service.REVERSE_GEOCODE_URL, route_service.DIRECTIONS_URL):
+            self.assertTrue(url.startswith("https://api.heigit.org/"), url)
+            self.assertNotIn("openrouteservice.org", url)
+
+    def test_endpoint_paths(self):
+        self.assertEqual(route_service.GEOCODE_URL, "https://api.heigit.org/pelias/v1/search")
+        self.assertEqual(route_service.REVERSE_GEOCODE_URL, "https://api.heigit.org/pelias/v1/reverse")
+        self.assertEqual(
+            route_service.DIRECTIONS_URL, "https://api.heigit.org/openrouteservice/v2/directions/driving-car"
+        )
+
+    def test_requests_go_to_the_new_urls_with_the_same_auth_header(self):
+        geo_resp = mock.Mock()
+        geo_resp.raise_for_status.return_value = None
+        geo_resp.json.return_value = {"features": [{"geometry": {"coordinates": [-87.63, 41.88]}}]}
+        with mock.patch.object(route_service, "_ors_api_key", return_value="secret"), mock.patch.object(
+            route_service.requests, "get", return_value=geo_resp
+        ) as get:
+            route_service.geocode("Chicago, IL")
+        self.assertEqual(get.call_args.args[0], "https://api.heigit.org/pelias/v1/search")
+        self.assertEqual(get.call_args.kwargs["headers"], {"Authorization": "secret"})
+
+
 class GeocodeReuseTests(SimpleTestCase):
     def test_shared_cache_geocodes_each_location_once(self):
         cache = {}

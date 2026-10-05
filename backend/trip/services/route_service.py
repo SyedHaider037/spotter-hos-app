@@ -21,8 +21,11 @@ from django.conf import settings
 METERS_PER_MILE = 1609.344
 SECONDS_PER_HOUR = 3600.0
 
-GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
-DIRECTIONS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
+# api.openrouteservice.org is deprecated (reduced quota, shutting down in Nov 2026); everything lives under
+# api.heigit.org/<service>/<version>/ now. Same API key and Authorization header, same request/response shapes.
+ORS_API_BASE = "https://api.heigit.org"
+GEOCODE_URL = f"{ORS_API_BASE}/pelias/v1/search"
+DIRECTIONS_URL = f"{ORS_API_BASE}/openrouteservice/v2/directions/driving-car"
 
 
 class RouteServiceError(RuntimeError):
@@ -73,7 +76,7 @@ def geocode(location_string: str, *, timeout_seconds: float = 15.0) -> tuple[flo
     return lng, lat
 
 
-REVERSE_GEOCODE_URL = "https://api.openrouteservice.org/geocode/reverse"
+REVERSE_GEOCODE_URL = f"{ORS_API_BASE}/pelias/v1/reverse"
 
 
 def reverse_geocode(lat: float, lng: float, *, timeout_seconds: float = 10.0) -> str | None:
