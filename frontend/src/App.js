@@ -6,6 +6,7 @@ import HosLimits from './components/HosLimits';
 import PlanPreview from './components/PlanPreview';
 import TripMap from './components/TripMap';
 import TripSummary from './components/TripSummary';
+import { classifyPlanFailure } from './utils/planApi';
 import { describeStops, timeZoneLabel } from './utils/stops';
 import { CYCLE_LIMIT_HOURS, peakShift, summarizeTrip } from './utils/tripSummary';
 
@@ -46,10 +47,9 @@ async function postPlan(payload) {
     const data = await resp.json().catch(() => null);
     if (resp.ok) return data;
 
-    const message = data?.error?.message || data?.detail;
-    // A JSON error body means the app itself answered; anything else (e.g. a 503 HTML page) is the platform.
-    if (message) throw new Error(message);
-    throw new RetryableError(`Request failed (${resp.status})`);
+    // A JSON error body or a 429 means the app itself answered; anything else (e.g. a 503 HTML page) is the platform.
+    const failure = classifyPlanFailure({ status: resp.status, data, retryAfter: resp.headers.get('Retry-After') });
+    throw failure.retryable ? new RetryableError(failure.message) : new Error(failure.message);
   } finally {
     clearTimeout(timer);
   }
