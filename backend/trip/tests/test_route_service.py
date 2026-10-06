@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from unittest import mock
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from trip.services import route_service
 from trip.services.trip_planner import plan_trip
@@ -126,3 +126,32 @@ class ReverseGeocodeTests(SimpleTestCase):
         ), mock.patch.object(route_service.requests, "get") as get:
             self.assertIsNone(route_service.reverse_geocode(1.0, 2.0))
         get.assert_not_called()
+
+
+class DriveTimeTests(SimpleTestCase):
+    """Driving time is the ORS distance at the truck average speed, not the duration ORS returns."""
+
+    def route(self):
+        with mock.patch.object(route_service, "_ors_api_key", return_value="secret"), mock.patch.object(
+            route_service, "_geocode_cached", return_value=(-87.0, 41.0)
+        ), mock.patch.object(route_service.requests, "post", return_value=_directions_response()):
+            return route_service.get_route("A", "B")
+
+    @override_settings(TRUCK_AVG_MPH=50.0)
+    def test_duration_is_distance_over_the_average_speed(self):
+        result = self.route()
+        self.assertAlmostEqual(result.distance_miles, 100.0, places=6)
+        self.assertAlmostEqual(result.duration_hours, 100.0 / 50.0, places=9)
+
+    @override_settings(TRUCK_AVG_MPH=55.0)
+    def test_the_duration_ors_returns_is_ignored(self):
+        # The fixture says 2 hours for 100 miles (50 mph); at 55 mph it is 100/55 hours.
+        self.assertAlmostEqual(self.route().duration_hours, 100.0 / 55.0, places=9)
+
+    def test_a_response_without_a_duration_is_fine(self):
+        response = _directions_response()
+        del response.json.return_value["routes"][0]["summary"]["duration"]
+        with mock.patch.object(route_service, "_ors_api_key", return_value="secret"), mock.patch.object(
+            route_service, "_geocode_cached", return_value=(-87.0, 41.0)
+        ), mock.patch.object(route_service.requests, "post", return_value=response):
+            self.assertGreater(route_service.get_route("A", "B").duration_hours, 0)

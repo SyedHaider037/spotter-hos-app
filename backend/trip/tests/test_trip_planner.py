@@ -565,3 +565,13 @@ class FuelStopAtLegEndTests(SimpleTestCase):
         dropoff = stops_of(result, "DROPOFF")[0]
         self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]) * 60, 1000, places=3)
         self.assertNotEqual((fuel["lat"], fuel["lng"]), (dropoff["lat"], dropoff["lng"]))
+
+
+class FuelStopAtTruckSpeedTests(SimpleTestCase):
+    """The fuel stop is placed by distance, so it stays at 1,000 miles whatever the average speed is."""
+
+    def test_the_stop_lands_at_1000_miles_at_55_mph(self):
+        result = run_plan([fake_route(100, 100 / 55), fake_route(1500, 1500 / 55)])
+        (fuel,) = stops_of(result, "FUEL")
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]) * 55, 1000, places=3)
+        self.assertAlmostEqual(fuel["lat"], 41.0 + (35.0 - 41.0) * 0.6, places=3)  # 900 of the leg's 1,500 miles

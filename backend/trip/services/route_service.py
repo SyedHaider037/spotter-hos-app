@@ -8,6 +8,9 @@ Approach:
 This module does ONE thing:
 - Input: origin and destination location strings
 - Output: (distance_miles, duration_hours, polyline)
+
+Driving time is NOT taken from ORS: its truck profile averages about 40 mph. duration_hours is the ORS distance
+divided by the TRUCK_AVG_MPH setting, and this is the only place it is derived.
 """
 
 from __future__ import annotations
@@ -19,7 +22,6 @@ from django.conf import settings
 
 
 METERS_PER_MILE = 1609.344
-SECONDS_PER_HOUR = 3600.0
 
 # api.openrouteservice.org is deprecated (reduced quota, shutting down in Nov 2026); everything lives under
 # api.heigit.org/<service>/<version>/ now. Same API key and Authorization header, same request/response shapes.
@@ -160,17 +162,17 @@ def get_route(
     summary = (routes[0].get("summary") or {})
     try:
         distance_meters = float(summary["distance"])
-        duration_seconds = float(summary["duration"])
     except Exception as exc:
-        raise RouteServiceError("ORS directions response missing distance/duration summary.") from exc
+        raise RouteServiceError("ORS directions response missing distance summary.") from exc
 
     polyline = routes[0].get("geometry")
     if not isinstance(polyline, str) or not polyline:
         raise RouteServiceError("ORS directions response missing geometry polyline.")
 
+    distance_miles = distance_meters / METERS_PER_MILE
     return RouteResult(
-        distance_miles=distance_meters / METERS_PER_MILE,
-        duration_hours=duration_seconds / SECONDS_PER_HOUR,
+        distance_miles=distance_miles,
+        duration_hours=distance_miles / settings.TRUCK_AVG_MPH,
         polyline=polyline,
     )
 
