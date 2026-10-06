@@ -531,3 +531,34 @@ class FuelStopTests(SimpleTestCase):
         for day in result["daily_logs"][1:-1]:
             self.assertAlmostEqual(sum(segment_hours(seg) for seg in day["segments"]), 24.0, places=6)
         self.assertAlmostEqual(total_hours(result, "DRIVING"), 2100 / 60, places=6)
+
+
+class FuelStopAtLegEndTests(SimpleTestCase):
+    """Where the 1,000-mile mark falls relative to the end of a leg (60 mph throughout)."""
+
+    def test_mark_exactly_at_the_end_of_the_first_leg_fuels_at_the_pickup(self):
+        result = run_plan([fake_route(1000, 1000 / 60), fake_route(120, 2)])
+        types = [s["type"] for s in result["stops"]]
+        self.assertEqual(len(stops_of(result, "FUEL")), 1)
+        # Fuel comes at the arrival point, before the pickup hour starts.
+        self.assertLess(types.index("FUEL"), types.index("PICKUP"))
+        fuel, pickup = stops_of(result, "FUEL")[0], stops_of(result, "PICKUP")[0]
+        self.assertEqual(fuel["start_time"], pickup["start_time"])
+        self.assertEqual((fuel["lat"], fuel["lng"]), (pickup["lat"], pickup["lng"]))
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]) * 60, 1000, places=3)
+
+    def test_the_count_restarts_after_a_stop_at_the_leg_end(self):
+        # 1,000 + 1,000 miles: one stop at the pickup; the second 1,000 ends at the dropoff, where none is added.
+        result = run_plan([fake_route(1000, 1000 / 60), fake_route(1000, 1000 / 60)])
+        self.assertEqual(len(stops_of(result, "FUEL")), 1)
+
+    def test_mark_exactly_at_the_final_dropoff_adds_no_stop(self):
+        result = run_plan([fake_route(400, 400 / 60), fake_route(600, 600 / 60)])
+        self.assertEqual(stops_of(result, "FUEL"), [])
+
+    def test_mark_in_the_middle_of_a_leg_is_unchanged(self):
+        result = run_plan([fake_route(400, 400 / 60), fake_route(900, 900 / 60)])
+        (fuel,) = stops_of(result, "FUEL")
+        dropoff = stops_of(result, "DROPOFF")[0]
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]) * 60, 1000, places=3)
+        self.assertNotEqual((fuel["lat"], fuel["lng"]), (dropoff["lat"], dropoff["lng"]))

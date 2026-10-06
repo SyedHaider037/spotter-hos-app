@@ -490,6 +490,11 @@ def plan_trip(
 
         # Arrival stop handling.
         arrival_lat, arrival_lng = leg.points[-1]
+        is_final_leg = leg_index == len(legs) - 1
+        if not is_final_leg and hos_rules.fuel_stop_required(miles_since_fuel):
+            # The 1,000-mile mark fell exactly on the end of this leg: fuel here, before the pickup. (At the final
+            # dropoff there is nothing left to drive, so no stop is added.)
+            do_fuel_stop(arrival_lat, arrival_lng)
         if leg_index == 0:
             # Pickup on-duty 1 hour.
             _add_stop(
