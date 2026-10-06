@@ -1,4 +1,11 @@
-import { classifyPlanFailure, rateLimitMessage, retryAfterSeconds } from './planApi';
+import {
+  classifyPlanFailure,
+  COLD_REQUEST_TIMEOUT_MS,
+  rateLimitMessage,
+  requestTimeoutMs,
+  retryAfterSeconds,
+  WARM_REQUEST_TIMEOUT_MS,
+} from './planApi';
 
 const tooMany = (message = 'Too many trip plans from this address. Try again in 1235 seconds.') => ({
   error: { code: 'RATE_LIMITED', message },
@@ -56,5 +63,22 @@ describe('retry-after helpers', () => {
     expect(rateLimitMessage(60)).toMatch(/about 1 minute\./);
     expect(rateLimitMessage(61)).toMatch(/about 2 minutes\./);
     expect(rateLimitMessage(0)).toMatch(/about 1 minute\./);
+  });
+});
+
+describe('requestTimeoutMs', () => {
+  test('a server that has never answered gets the short timeout, so a sleeping one is retried quickly', () => {
+    expect(requestTimeoutMs(false)).toBe(30000);
+  });
+
+  test('once it has answered, a slow plan gets longer than the backend allows (60 s)', () => {
+    expect(requestTimeoutMs(true)).toBe(65000);
+    expect(WARM_REQUEST_TIMEOUT_MS).toBeGreaterThan(60000);
+  });
+
+  test('the worst-case wait for a sleeping server is unchanged (7 attempts, 10 s apart, 30 s each)', () => {
+    const attempts = 7;
+    const retryDelayMs = 10000;
+    expect(attempts * COLD_REQUEST_TIMEOUT_MS + (attempts - 1) * retryDelayMs).toBeLessThanOrEqual(270000);
   });
 });

@@ -33,3 +33,13 @@ export function classifyPlanFailure({ status, data, retryAfter }) {
   if (message) return { retryable: false, message };
   return { retryable: true, message: `Request failed (${status})` };
 }
+
+// Per-attempt timeout. While the server has never answered it may be waking from idle, so an attempt gives up after
+// 30 s and is retried. Once it has answered, a slow plan (the backend allows up to 60 s for a slow routing service)
+// gets 65 s to finish, and there is no retry.
+export const COLD_REQUEST_TIMEOUT_MS = 30000;
+export const WARM_REQUEST_TIMEOUT_MS = 65000;
+
+export function requestTimeoutMs(serverReached) {
+  return serverReached ? WARM_REQUEST_TIMEOUT_MS : COLD_REQUEST_TIMEOUT_MS;
+}

@@ -6,7 +6,7 @@ import HosLimits from './components/HosLimits';
 import PlanPreview from './components/PlanPreview';
 import TripMap from './components/TripMap';
 import TripSummary from './components/TripSummary';
-import { classifyPlanFailure } from './utils/planApi';
+import { classifyPlanFailure, requestTimeoutMs } from './utils/planApi';
 import { describeStops, timeZoneLabel } from './utils/stops';
 import { CYCLE_LIMIT_HOURS, peakShift, summarizeTrip } from './utils/tripSummary';
 
@@ -19,7 +19,7 @@ const API_URL = (
 const WAKE_NOTICE_DELAY_MS = 15000;
 
 // Cold-start handling for the free-tier backend (it boots in roughly a minute after sleeping).
-const REQUEST_TIMEOUT_MS = 30000; // per attempt; a normal warm request finishes in ~8-14s
+// Per-attempt timeout: see requestTimeoutMs (30 s while the server may be asleep, 65 s once it has answered).
 const RETRY_DELAY_MS = 10000;
 const MAX_ATTEMPTS = 7; // first try + 6 retries, ~60s of waiting in total
 
@@ -28,9 +28,9 @@ class RetryableError extends Error {}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function postPlan(payload) {
+async function postPlan(payload, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     let resp;
     try {
@@ -133,7 +133,7 @@ function App() {
     try {
       for (let attempt = 1; ; attempt += 1) {
         try {
-          const data = await postPlan(payload);
+          const data = await postPlan(payload, requestTimeoutMs(serverReached.current));
           serverReached.current = true;
           setPlannedCycleHours(payload.cycle_used_hours);
           setResult(data);
