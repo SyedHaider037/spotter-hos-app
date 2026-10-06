@@ -26,6 +26,31 @@ load_dotenv(BASE_DIR / ".env")
 ORS_API_KEY = os.getenv("ORS_API_KEY", "")
 
 
+import logging
+
+DEFAULT_TRUCK_AVG_MPH = 55.0
+
+
+def _truck_avg_mph(raw: str | None) -> float:
+    """Average truck speed used to turn route distance into driving time; 30-75 mph, else the default (with a warning)."""
+    if raw is None or not raw.strip():
+        return DEFAULT_TRUCK_AVG_MPH
+    try:
+        value = float(raw)
+    except ValueError:
+        value = float("nan")
+    if not 30 <= value <= 75:  # also false for NaN
+        logging.getLogger(__name__).warning(
+            "TRUCK_AVG_MPH=%r is not a number from 30 to 75; using %s mph.", raw, DEFAULT_TRUCK_AVG_MPH
+        )
+        return DEFAULT_TRUCK_AVG_MPH
+    return value
+
+
+# Average speed for driving time. ORS's own durations are not used: its truck profile averages about 40 mph.
+TRUCK_AVG_MPH = _truck_avg_mph(os.getenv("TRUCK_AVG_MPH"))
+
+
 # Security settings are environment-driven (see backend/.env.example).
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
