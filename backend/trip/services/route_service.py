@@ -25,7 +25,7 @@ SECONDS_PER_HOUR = 3600.0
 # api.heigit.org/<service>/<version>/ now. Same API key and Authorization header, same request/response shapes.
 ORS_API_BASE = "https://api.heigit.org"
 GEOCODE_URL = f"{ORS_API_BASE}/pelias/v1/search"
-DIRECTIONS_URL = f"{ORS_API_BASE}/openrouteservice/v2/directions/driving-car"
+DIRECTIONS_URL = f"{ORS_API_BASE}/openrouteservice/v2/directions/driving-hgv"
 
 
 class RouteServiceError(RuntimeError):

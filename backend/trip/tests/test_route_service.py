@@ -37,7 +37,7 @@ class EndpointTests(SimpleTestCase):
         self.assertEqual(route_service.GEOCODE_URL, "https://api.heigit.org/pelias/v1/search")
         self.assertEqual(route_service.REVERSE_GEOCODE_URL, "https://api.heigit.org/pelias/v1/reverse")
         self.assertEqual(
-            route_service.DIRECTIONS_URL, "https://api.heigit.org/openrouteservice/v2/directions/driving-car"
+            route_service.DIRECTIONS_URL, "https://api.heigit.org/openrouteservice/v2/directions/driving-hgv"
         )
 
     def test_requests_go_to_the_new_urls_with_the_same_auth_header(self):
