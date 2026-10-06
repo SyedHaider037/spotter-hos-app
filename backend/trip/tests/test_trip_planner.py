@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from unittest import mock
 
+from django.core.cache import cache
 from django.test import SimpleTestCase
 
 from trip.services.route_service import RouteResult
@@ -168,6 +169,7 @@ class CycleLimitTests(SimpleTestCase):
             "dropoff_location": "C",
             "cycle_used_hours": cycle_used_hours,
         }
+        cache.clear()  # the plan endpoint is throttled per IP; these tests share one
         with mock.patch(PATCH_TARGET, side_effect=[fake_route(600, 10), fake_route(600, 10)]), mock.patch(
             REVERSE_TARGET, return_value="Testville, TS"
         ):
@@ -233,6 +235,7 @@ class RouteGeometryTests(SimpleTestCase):
 
     def test_api_response_includes_route(self):
         payload = {"current_location": "A", "pickup_location": "B", "dropoff_location": "C", "cycle_used_hours": 0}
+        cache.clear()  # the plan endpoint is throttled per IP; these tests share one
         with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]), mock.patch(
             REVERSE_TARGET, return_value="Testville, TS"
         ):

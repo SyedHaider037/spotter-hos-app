@@ -142,3 +142,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+# Rate limiting for POST /api/plan/ (each plan spends OpenRouteService free-tier quota). Per client IP.
+# The app sits behind the host's reverse proxy, so the client IP comes from X-Forwarded-For: THROTTLE_NUM_PROXIES is
+# how many proxies append to it (the client is that many entries from the right). 0 trusts only the socket address.
+REST_FRAMEWORK = {
+    "DEFAULT_THROTTLE_RATES": {"plan": os.environ.get("PLAN_THROTTLE_RATE", "15/hour")},
+    "NUM_PROXIES": int(os.environ.get("THROTTLE_NUM_PROXIES", "1")),
+    "EXCEPTION_HANDLER": "trip.api_errors.exception_handler",
+}

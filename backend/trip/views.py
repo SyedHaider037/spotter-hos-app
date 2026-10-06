@@ -4,11 +4,12 @@ import logging
 from typing import Any
 
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.exceptions import ParseError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from .throttles import PlanRateThrottle
 from .services.trip_planner import TripPlannerError, plan_trip
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ def _get_required_number(data: dict[str, Any], key: str) -> float:
 
 
 @api_view(["POST"])
+@throttle_classes([PlanRateThrottle])
 def plan(request: Request) -> Response:
     """
     POST /api/plan/

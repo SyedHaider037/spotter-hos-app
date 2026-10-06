@@ -2,6 +2,7 @@
 
 from unittest import mock
 
+from django.core.cache import cache
 from django.test import SimpleTestCase
 
 from .test_trip_planner import PATCH_TARGET, REVERSE_TARGET, fake_route
@@ -11,6 +12,7 @@ BODY = '{"current_location":"A","pickup_location":"B","dropoff_location":"C","cy
 
 class MalformedBodyTests(SimpleTestCase):
     def post(self, raw):
+        cache.clear()  # the plan endpoint is throttled per IP; these tests share one
         with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]), mock.patch(
             REVERSE_TARGET, return_value="Testville, TS"
         ):
