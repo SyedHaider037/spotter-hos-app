@@ -460,3 +460,74 @@ class CycleRestartTests(SimpleTestCase):
         self.assertEqual(
             [round(h, 3) for h in cycle_hours_by_period(result, 69.9)], [70.0, round(6.0 - 0.1, 3)]
         )
+
+
+def driving_hours_before(result, moment: str) -> float:
+    """Hours of driving completed by `moment` (an ISO timestamp from the plan)."""
+    limit = _parse(moment)
+    return sum(
+        (min(_parse(seg["end"]), limit) - _parse(seg["start"])).total_seconds() / 3600
+        for seg in all_segments(result)
+        if seg["status"] == "DRIVING" and _parse(seg["start"]) < limit
+    )
+
+
+class FuelStopTests(SimpleTestCase):
+    """Fuel stops land exactly when 1,000 miles have been driven, even in the middle of a leg (60 mph throughout)."""
+
+    def test_stop_lands_at_1000_miles_in_the_middle_of_a_long_leg(self):
+        result = run_plan([fake_route(100, 100 / 60), fake_route(1500, 25)])
+        (fuel,) = stops_of(result, "FUEL")
+        self.assertEqual(fuel["duration"], 0)
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]) * 60, 1000, places=3)
+        # 900 of the 1,500 miles of the second leg are done: 60% of the way along its (two-point) polyline.
+        self.assertAlmostEqual(fuel["lat"], 41.0 + (35.0 - 41.0) * 0.6, places=3)
+
+    def test_a_trip_over_2000_miles_gets_two_stops_1000_miles_apart(self):
+        result = run_plan([fake_route(100, 100 / 60), fake_route(2000, 2000 / 60)])
+        first, second = stops_of(result, "FUEL")
+        self.assertAlmostEqual(driving_hours_before(result, first["start_time"]) * 60, 1000, places=3)
+        self.assertAlmostEqual(driving_hours_before(result, second["start_time"]) * 60, 2000, places=3)
+
+    def test_a_trip_under_1000_miles_gets_none(self):
+        result = run_plan([fake_route(400, 400 / 60), fake_route(599, 599 / 60)])
+        self.assertEqual(stops_of(result, "FUEL"), [])
+
+    def test_a_rest_at_the_mark_does_not_move_the_stop(self):
+        # 1,000 miles take exactly 11 driving hours (after the 8-hour break), the moment the 10-hour rest starts.
+        result = run_plan([fake_route(1500, 16.5), fake_route(120, 2)])
+        (fuel,) = stops_of(result, "FUEL")
+        rest = stops_of(result, "REST_10")[0]
+        self.assertEqual(fuel["start_time"], rest["start_time"])
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]), 11.0, places=6)
+        types = [s["type"] for s in result["stops"]]
+        self.assertLess(types.index("FUEL"), types.index("REST_10"))
+
+    def test_a_break_at_the_mark_does_not_move_the_stop(self):
+        # At 125 mph, 1,000 miles take exactly 8 driving hours, the moment the 30-minute break starts.
+        result = run_plan([fake_route(2000, 16), fake_route(125, 1)])
+        fuel = stops_of(result, "FUEL")[0]
+        brk = stops_of(result, "BREAK_30")[0]
+        self.assertEqual(fuel["start_time"], brk["start_time"])
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]), 8.0, places=6)
+
+    def test_a_break_before_the_mark_does_not_shift_it(self):
+        # The break at 8 hours (480 miles at 60 mph) delays the clock, not the miles: the stop is still at 1,000.
+        result = run_plan([fake_route(100, 100 / 60), fake_route(1500, 25)])
+        (fuel,) = stops_of(result, "FUEL")
+        self.assertGreaterEqual(len(stops_of(result, "BREAK_30")), 1)
+        self.assertAlmostEqual(driving_hours_before(result, fuel["start_time"]) * 60, 1000, places=3)
+
+    def test_the_stop_does_not_change_the_logs(self):
+        result = run_plan([fake_route(100, 100 / 60), fake_route(2000, 2000 / 60)])
+        self.assertEqual(len(stops_of(result, "FUEL")), 2)
+        # Driving is split only by a zero-minute stop, so the log shows one continuous driving block.
+        for day in result["daily_logs"]:
+            for before, after in zip(day["segments"], day["segments"][1:]):
+                self.assertFalse(
+                    before["status"] == after["status"] == "DRIVING" and before["end"] == after["start"], day["date"]
+                )
+        # Every full day adds up to exactly 24 hours.
+        for day in result["daily_logs"][1:-1]:
+            self.assertAlmostEqual(sum(segment_hours(seg) for seg in day["segments"]), 24.0, places=6)
+        self.assertAlmostEqual(total_hours(result, "DRIVING"), 2100 / 60, places=6)

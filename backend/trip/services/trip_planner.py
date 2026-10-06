@@ -159,6 +159,11 @@ def _interpolate_point(points: list[tuple[float, float]], fraction: float) -> tu
 def _add_segment(segments: list[LogSegment], status: DutyStatus, start: datetime, end: datetime) -> None:
     if end <= start:
         return
+    last = segments[-1] if segments else None
+    if status == "DRIVING" and last and last["status"] == "DRIVING" and last["end"] == _iso(start):
+        # Driving split only by a zero-minute stop (fuel) is still one continuous driving block.
+        last["end"] = _iso(end)
+        return
     segments.append({"status": status, "start": _iso(start), "end": _iso(end)})
 
 
@@ -427,6 +432,13 @@ def plan_trip(
         miles_into_leg = 0.0
 
         while miles_remaining > 1e-6:
+            # Fuel rule, checked first so a stop at the 1,000-mile mark is never pushed back by a rest or break there.
+            if hos_rules.fuel_stop_required(miles_since_fuel):
+                frac = (miles_into_leg / leg.distance_miles) if leg.distance_miles > 0 else 0.0
+                lat, lng = _interpolate_point(leg.points, frac)
+                do_fuel_stop(lat, lng)
+                continue
+
             # Cycle exhausted mid-trip: take a 34-hour restart, which resets the cycle, and keep going.
             if hos_rules.cycle_limit_reached(cycle_used + CYCLE_EPSILON_HOURS):
                 frac = (miles_into_leg / leg.distance_miles) if leg.distance_miles > 0 else 0.0
@@ -450,13 +462,6 @@ def plan_trip(
                 do_break_30(lat, lng)
                 continue
 
-            # Fuel rule.
-            if hos_rules.fuel_stop_required(miles_since_fuel):
-                frac = (miles_into_leg / leg.distance_miles) if leg.distance_miles > 0 else 0.0
-                lat, lng = _interpolate_point(leg.points, frac)
-                do_fuel_stop(lat, lng)
-                continue
-
             # Determine how long we can drive before hitting a rule boundary or destination.
             max_hours = available_drive_hours_before_limits()
             if max_hours <= 0:
@@ -472,9 +477,14 @@ def plan_trip(
                 raise TripPlannerError("Route duration invalid; cannot compute driving pace.")
 
             hours_to_destination = miles_remaining / mph
-            hours = min(max_hours, hours_to_destination)
+            # Stop driving exactly when the fuel interval is reached, even in the middle of a leg.
+            hours_to_fuel = (hos_rules.FUEL_INTERVAL_MILES - miles_since_fuel) / mph
+            hours = min(max_hours, hours_to_destination, hours_to_fuel)
+            reaches_fuel_mark = hours >= hours_to_fuel - 1e-9  # tolerance: another limit may land on the mark too
 
             miles = drive_for(leg, hours)
+            if reaches_fuel_mark:
+                miles_since_fuel = float(hos_rules.FUEL_INTERVAL_MILES)  # no float drift: the check above must fire
             miles_into_leg += miles
             miles_remaining = max(0.0, leg.distance_miles - miles_into_leg)
 
