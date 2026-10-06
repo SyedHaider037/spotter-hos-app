@@ -152,3 +152,13 @@ REST_FRAMEWORK = {
     "NUM_PROXIES": int(os.environ.get("THROTTLE_NUM_PROXIES", "1")),
     "EXCEPTION_HANDLER": "trip.api_errors.exception_handler",
 }
+
+
+# Application logs (trip.*) go to stdout at INFO so the host's log viewer shows them; Django's own loggers keep their defaults.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "loggers": {"trip": {"handlers": ["console"], "level": "INFO", "propagate": False}},
+}

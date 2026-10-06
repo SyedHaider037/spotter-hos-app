@@ -65,3 +65,33 @@ class PlanThrottleTests(SimpleTestCase):
         response = self.client.post("/api/plan/", "{bad", content_type="application/json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"]["code"], "PLAN_FAILED")
+
+
+class ProxyLoggingTests(SimpleTestCase):
+    """The plan endpoint logs the proxy hop count and the masked client IP, so the proxy setting can be verified."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def logged(self, **extra):
+        with self.assertLogs("trip.views", level="INFO") as logs, mock.patch(
+            PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]
+        ), mock.patch(REVERSE_TARGET, return_value="Testville, TS"):
+            self.client.post("/api/plan/", BODY, content_type="application/json", **extra)
+        return " | ".join(logs.output)
+
+    def test_logs_hop_count_and_masked_client_ip(self):
+        output = self.logged(HTTP_X_FORWARDED_FOR="9.9.9.9, 203.0.113.7")
+        self.assertIn("X-Forwarded-For entries=2", output)
+        self.assertIn("throttle client=203.0.113.xxx", output)
+
+    def test_never_logs_the_full_header_or_address(self):
+        output = self.logged(HTTP_X_FORWARDED_FOR="9.9.9.9, 203.0.113.7")
+        self.assertNotIn("203.0.113.7", output)
+        self.assertNotIn("9.9.9.9", output)
+
+    def test_without_the_header_it_logs_zero_entries_and_the_socket_address(self):
+        output = self.logged()
+        self.assertIn("X-Forwarded-For entries=0", output)
+        self.assertIn("throttle client=127.0.0.xxx", output)
