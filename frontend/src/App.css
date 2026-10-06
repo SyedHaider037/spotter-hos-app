@@ -578,6 +578,37 @@
   .MapCanvas {
     height: 320px;
   }
+
+  /* Touch targets of 44 x 44px for the map's controls. Zoom buttons grow; markers and attribution links keep their
+     look and get an invisible larger hit area instead. */
+  .leaflet-container .leaflet-control-zoom a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+  }
+
+  .leaflet-container .leaflet-control-attribution a {
+    position: relative;
+  }
+
+  .StopMarkerWrap::after,
+  .leaflet-container .leaflet-control-attribution a::after {
+    content: '';
+    position: absolute;
+    inset: -9px;
+  }
+
+  .leaflet-container .leaflet-control-attribution a::after {
+    inset: -14px -6px;
+  }
+
+  .leaflet-container a.leaflet-popup-close-button {
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    line-height: 44px;
+    text-align: center;
+  }
 }
 
 .MapLegend {
@@ -648,7 +679,7 @@
 }
 
 .PopupBody {
-  min-width: 220px;
+  min-width: min(220px, 60vw); /* never wider than the screen allows */
 }
 
 .PopupTitle {
