@@ -149,8 +149,8 @@ export default function TripMap({ stops, route }) {
           {routePoints.length >= 2 ? (
             <>
               {/* A light casing under the line keeps it readable over any map color. */}
-              <Polyline positions={routePoints} pathOptions={{ className: 'RouteCasing', weight: 8, lineCap: 'round' }} />
-              <Polyline positions={routePoints} pathOptions={{ className: 'RouteLine', weight: 4, lineCap: 'round' }} />
+              <Polyline positions={routePoints} className="RouteCasing" weight={8} lineCap="round" />
+              <Polyline positions={routePoints} className="RouteLine" weight={4} lineCap="round" />
             </>
           ) : null}
 

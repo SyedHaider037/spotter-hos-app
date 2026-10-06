@@ -9,6 +9,8 @@
   Color roles:
     neutral ramp   surfaces, text, borders, grid lines
     accent (blue)  reserved for things you can interact with: the primary button, focus rings, links
+    route (blue)   the line on the map: blue, as on every map app. Its own token (--color-route), so it can change
+                   without touching the accent
     duty status    driving (green), on duty (amber), off duty (slate), sleeper berth (violet): one hue per status,
                    none of them the accent blue; used by the log sheets and the map so a color means one thing
     feedback       errors
@@ -107,8 +109,9 @@
   --color-status-off-duty: var(--neutral-800);
   --color-status-sleeper: var(--violet-700);
 
-  /* Map: the route is the driving color; markers follow the duty status of what happens there */
-  --color-route: var(--color-status-driving);
+  /* Map: the route line is blue, the usual color for a route on a map; markers follow the duty status of what
+     happens there */
+  --color-route: var(--blue-600);
   --color-route-casing: var(--neutral-0);
   --color-marker-start: var(--color-status-driving);
   --color-marker-place: var(--color-status-on-duty); /* pickup and dropoff */

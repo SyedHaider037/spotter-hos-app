@@ -552,7 +552,8 @@
   text-align: center;
 }
 
-/* Route: the driving color, over a light casing so it reads on any map background. */
+/* Route: blue (--color-route), over a light casing so it reads on any map background. The Polyline gets these
+   classes through its className prop, so they are on the path from the start in the production build too. */
 .leaflet-container path.RouteCasing {
   stroke: var(--color-route-casing);
   stroke-opacity: 0.9;
