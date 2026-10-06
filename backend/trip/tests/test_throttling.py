@@ -67,8 +67,8 @@ class PlanThrottleTests(SimpleTestCase):
         self.assertEqual(response.json()["error"]["code"], "PLAN_FAILED")
 
 
-class ProxyLoggingTests(SimpleTestCase):
-    """The plan endpoint logs the proxy hop count and the masked client IP, so the proxy setting can be verified."""
+class PlanLogCapture(SimpleTestCase):
+    """Shared helper: post one plan request and return everything the trip.views logger wrote at INFO."""
 
     def setUp(self):
         cache.clear()
@@ -80,6 +80,10 @@ class ProxyLoggingTests(SimpleTestCase):
         ), mock.patch(REVERSE_TARGET, return_value="Testville, TS"):
             self.client.post("/api/plan/", BODY, content_type="application/json", **extra)
         return " | ".join(logs.output)
+
+
+class ProxyLoggingTests(PlanLogCapture):
+    """The plan endpoint logs the proxy hop count and the masked client IP, so the proxy setting can be verified."""
 
     def test_logs_hop_count_and_masked_client_ip(self):
         output = self.logged(HTTP_X_FORWARDED_FOR="9.9.9.9, 203.0.113.7")
@@ -95,3 +99,43 @@ class ProxyLoggingTests(SimpleTestCase):
         output = self.logged()
         self.assertIn("X-Forwarded-For entries=0", output)
         self.assertIn("throttle client=127.0.0.xxx", output)
+
+
+class ClientIpHeaderLoggingTests(PlanLogCapture):
+    """The plan log also reports which client-IP headers arrive (masked), and nothing else from the request."""
+
+    HEADERS = {
+        "HTTP_CF_CONNECTING_IP": "198.51.100.23",
+        "HTTP_TRUE_CLIENT_IP": "198.51.100.24",
+        "HTTP_X_REAL_IP": "172.69.242.9",
+        "HTTP_X_FORWARDED_FOR": "198.51.100.23, 172.69.242.9",
+        "HTTP_FORWARDED": "for=198.51.100.23",
+    }
+
+    def test_reports_each_header_masked(self):
+        output = self.logged(**self.HEADERS)
+        self.assertIn("CF-Connecting-IP=198.51.100.xxx", output)
+        self.assertIn("True-Client-IP=198.51.100.xxx", output)
+        self.assertIn("X-Real-IP=172.69.242.xxx", output)
+        self.assertIn("X-Forwarded-For=[198.51.100.xxx, 172.69.242.xxx]", output)
+        self.assertIn("Forwarded=present", output)
+
+    def test_never_logs_a_full_address_or_the_forwarded_value(self):
+        output = self.logged(**self.HEADERS)
+        for full in ("198.51.100.23", "198.51.100.24", "172.69.242.9", "for=198.51.100"):
+            self.assertNotIn(full, output)
+
+    def test_missing_headers_are_reported_as_absent(self):
+        output = self.logged()
+        for label in ("CF-Connecting-IP", "True-Client-IP", "X-Real-IP", "X-Forwarded-For"):
+            self.assertIn(f"{label}=absent", output)
+        self.assertIn("Forwarded=absent", output)
+
+    def test_no_other_header_is_logged(self):
+        output = self.logged(HTTP_AUTHORIZATION="secret-token", HTTP_USER_AGENT="agent-string", HTTP_COOKIE="a=b")
+        for leaked in ("secret-token", "agent-string", "a=b"):
+            self.assertNotIn(leaked, output)
+
+    def test_junk_values_cannot_inject_log_lines(self):
+        output = self.logged(HTTP_X_REAL_IP="1.2.3.4\nINFO fake line")
+        self.assertNotIn("\nINFO fake line", output)
