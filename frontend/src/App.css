@@ -318,6 +318,7 @@
 }
 
 .FieldLabel {
+  display: block;
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   color: var(--color-text-label);

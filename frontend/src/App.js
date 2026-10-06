@@ -225,9 +225,12 @@ function App() {
                 />
               </label>
 
-              <label className="Field">
-                <div className="FieldLabel">Hours used this cycle (of {CYCLE_LIMIT_HOURS})</div>
+              <div className="Field">
+                <label className="FieldLabel" htmlFor="cycle-hours">
+                  Hours used this cycle (of {CYCLE_LIMIT_HOURS})
+                </label>
                 <input
+                  id="cycle-hours"
                   className="Input"
                   type="number"
                   step="0.25"
@@ -245,7 +248,7 @@ function App() {
                       ? 'No hours left: the plan will begin with a 34-hour restart.'
                       : `${hoursLeft} ${hoursLeft === 1 ? 'hour' : 'hours'} left before a 34-hour restart.`}
                 </div>
-              </label>
+              </div>
 
               <button className="Button" type="submit" disabled={!canSubmit || loading} aria-busy={loading}>
                 {loading ? (
