@@ -5,6 +5,7 @@ from unittest import mock
 from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
 
+from trip.throttles import mask_ip
 from .test_trip_planner import PATCH_TARGET, REVERSE_TARGET, fake_route
 
 BODY = {"current_location": "A", "pickup_location": "B", "dropoff_location": "C", "cycle_used_hours": 20}
@@ -139,3 +140,27 @@ class ClientIpHeaderLoggingTests(PlanLogCapture):
     def test_junk_values_cannot_inject_log_lines(self):
         output = self.logged(HTTP_X_REAL_IP="1.2.3.4\nINFO fake line")
         self.assertNotIn("\nINFO fake line", output)
+
+
+class MaskIpTests(SimpleTestCase):
+    def test_ipv4_keeps_the_first_three_parts(self):
+        self.assertEqual(mask_ip("203.0.113.7"), "203.0.113.xxx")
+
+    def test_ipv6_keeps_only_the_first_three_groups(self):
+        self.assertEqual(mask_ip("2407:d000:1c:26cf:10ba:1903:53db:1234"), "2407:d000:1c::xxx")
+
+    def test_ipv6_in_shortened_form_is_masked_the_same_way(self):
+        self.assertEqual(mask_ip("2001:db8::1"), "2001:db8:0::xxx")
+        self.assertEqual(mask_ip("2606:4700:4700::1111"), "2606:4700:4700::xxx")
+
+    def test_the_hidden_part_of_an_ipv6_address_never_appears(self):
+        masked = mask_ip("2407:d000:1c:26cf:10ba:1903:53db:1234")
+        for hidden in ("26cf", "10ba", "1903", "53db", "1234"):
+            self.assertNotIn(hidden, masked)
+
+    def test_ipv4_mapped_ipv6_is_masked_as_ipv4(self):
+        self.assertEqual(mask_ip("::ffff:203.0.113.7"), "203.0.113.xxx")
+
+    def test_anything_that_is_not_an_address_is_not_echoed(self):
+        for junk in ("", "garbage", "1.2.3.4\nINFO fake line", "<script>"):
+            self.assertEqual(mask_ip(junk), "invalid")

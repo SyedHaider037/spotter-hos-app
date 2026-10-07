@@ -1,3 +1,5 @@
+import ipaddress
+
 from rest_framework.settings import api_settings
 from rest_framework.throttling import AnonRateThrottle
 
@@ -12,11 +14,19 @@ class PlanRateThrottle(AnonRateThrottle):
 
 
 def mask_ip(ip: str) -> str:
-    """Hide the last part of an address for logs: 203.0.113.7 -> 203.0.113.xxx, 2001:db8::1 -> 2001:db8::xxx."""
-    for sep in (".", ":"):
-        if sep in ip:
-            return ip.rsplit(sep, 1)[0] + sep + "xxx"
-    return "xxx"
+    """
+    Hide most of an address for logs. IPv4 keeps its first three parts (203.0.113.xxx); IPv6 keeps only its first
+    three groups (2407:d000:1c::xxx). Anything that is not an address is replaced, never echoed.
+    """
+    try:
+        address = ipaddress.ip_address(ip.strip())
+    except ValueError:
+        return "invalid"
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        address = address.ipv4_mapped
+    if isinstance(address, ipaddress.IPv4Address):
+        return ".".join(str(address).split(".")[:3]) + ".xxx"
+    return ":".join(group.lstrip("0") or "0" for group in address.exploded.split(":")[:3]) + "::xxx"
 
 
 def describe_client(request) -> tuple[int, str]:
