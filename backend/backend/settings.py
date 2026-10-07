@@ -74,6 +74,8 @@ ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 # CORS: explicit allowlist. The API is stateless and the frontend sends no credentials.
 # Requires `django-cors-headers` installed.
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+# Lets the browser read Retry-After on a 429 (cross-origin responses hide other headers from page scripts).
+CORS_EXPOSE_HEADERS = ["Retry-After"]
 
 
 # Application definition

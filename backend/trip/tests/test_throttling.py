@@ -243,3 +243,24 @@ class CloudflareClientAddressTests(SimpleTestCase):
         self.assertEqual(len(networks), 22)
         self.assertTrue(any(ipaddress.ip_address("172.69.242.1") in n for n in networks))
         self.assertFalse(any(ipaddress.ip_address("203.0.113.7") in n for n in networks))
+
+
+@override_settings(REST_FRAMEWORK=rest_framework("1/hour"))
+class RetryAfterExposedTests(SimpleTestCase):
+    """The frontend runs on another origin, so the browser only sees Retry-After if CORS exposes it."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def test_a_429_exposes_retry_after_to_the_browser(self):
+        extra = {"HTTP_ORIGIN": "http://localhost:3000", "REMOTE_ADDR": "203.0.113.7"}
+        with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)] * 2), mock.patch(
+            REVERSE_TARGET, return_value="Testville, TS"
+        ):
+            self.client.post("/api/plan/", BODY, content_type="application/json", **extra)
+            response = self.client.post("/api/plan/", BODY, content_type="application/json", **extra)
+        self.assertEqual(response.status_code, 429)
+        self.assertGreater(int(response["Retry-After"]), 0)
+        exposed = [h.strip() for h in response["Access-Control-Expose-Headers"].split(",")]
+        self.assertIn("Retry-After", exposed)
