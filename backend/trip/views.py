@@ -9,7 +9,7 @@ from rest_framework.exceptions import ParseError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from .throttles import PlanRateThrottle, describe_client, describe_client_headers
+from .throttles import PlanRateThrottle, describe_client
 from .services.trip_planner import TripPlannerError, plan_trip
 
 logger = logging.getLogger(__name__)
@@ -46,13 +46,8 @@ def plan(request: Request) -> Response:
     Output JSON:
       { "stops": [...], "daily_logs": [...] }
     """
-    hops, client = describe_client(request)
-    logger.info(
-        "plan request: X-Forwarded-For entries=%d, throttle client=%s; headers: %s",
-        hops,
-        client,
-        describe_client_headers(request),
-    )
+    hops, client, source = describe_client(request)
+    logger.info("plan request: X-Forwarded-For entries=%d, throttle client=%s, source=%s", hops, client, source)
 
     try:
         if not isinstance(request.data, dict):
