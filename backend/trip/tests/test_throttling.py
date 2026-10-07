@@ -164,3 +164,82 @@ class MaskIpTests(SimpleTestCase):
     def test_anything_that_is_not_an_address_is_not_echoed(self):
         for junk in ("", "garbage", "1.2.3.4\nINFO fake line", "<script>"):
             self.assertEqual(mask_ip(junk), "invalid")
+
+
+@override_settings(REST_FRAMEWORK=rest_framework("3/hour"))
+class CloudflareClientAddressTests(SimpleTestCase):
+    """Behind Cloudflare the proxy hop is a shared edge address; the visitor is read from CF-Connecting-IP."""
+
+    EDGE = "172.69.242.10"  # inside 172.64.0.0/13
+    EDGE_V6 = "2606:4700:1::5"  # inside 2606:4700::/32
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def post(self, hop, cf=None):
+        extra = {"HTTP_X_FORWARDED_FOR": hop}
+        if cf is not None:
+            extra["HTTP_CF_CONNECTING_IP"] = cf
+        with mock.patch(PATCH_TARGET, side_effect=[fake_route(120, 2), fake_route(120, 2)]), mock.patch(
+            REVERSE_TARGET, return_value="Testville, TS"
+        ):
+            return self.client.post("/api/plan/", BODY, content_type="application/json", **extra)
+
+    def use_up(self, hop, cf):
+        for _ in range(3):
+            self.assertEqual(self.post(hop, cf).status_code, 200)
+
+    def test_the_visitor_address_is_used_when_the_hop_is_cloudflare(self):
+        self.use_up(self.EDGE, "198.51.100.5")
+        self.assertEqual(self.post(self.EDGE, "198.51.100.5").status_code, 429)
+
+    def test_two_visitors_behind_the_same_edge_address_have_separate_limits(self):
+        self.use_up(self.EDGE, "198.51.100.5")
+        self.assertEqual(self.post(self.EDGE, "198.51.100.5").status_code, 429)
+        self.assertEqual(self.post(self.EDGE, "198.51.100.6").status_code, 200)
+
+    def test_the_header_is_ignored_when_the_hop_is_not_cloudflare(self):
+        # A forged CF-Connecting-IP must not let a caller escape the limit by changing it on every request.
+        self.use_up("203.0.113.7", "198.51.100.1")
+        self.assertEqual(self.post("203.0.113.7", "198.51.100.2").status_code, 429)
+        self.assertEqual(self.post("203.0.113.7", "198.51.100.3").status_code, 429)
+
+    def test_ipv6_visitors_work_behind_an_ipv4_edge_address(self):
+        self.use_up(self.EDGE, "2407:d000:1c:26cf:10ba:1903:53db:1234")
+        self.assertEqual(self.post(self.EDGE, "2407:d000:1c:26cf:10ba:1903:53db:1234").status_code, 429)
+        self.assertEqual(self.post(self.EDGE, "2407:d000:1c:26cf:10ba:1903:53db:9999").status_code, 200)
+
+    def test_an_ipv6_edge_address_is_recognised_as_cloudflare(self):
+        self.use_up(self.EDGE_V6, "198.51.100.5")
+        self.assertEqual(self.post(self.EDGE_V6, "198.51.100.5").status_code, 429)
+        self.assertEqual(self.post(self.EDGE_V6, "198.51.100.6").status_code, 200)
+
+    def test_an_invalid_or_multi_valued_header_falls_back_to_the_hop(self):
+        for bad in ("garbage", "198.51.100.5, 198.51.100.6", "999.1.1.1", ""):
+            cache.clear()
+            with self.subTest(header=bad):
+                self.use_up(self.EDGE, bad)
+                self.assertEqual(self.post(self.EDGE, bad + " ").status_code, 429)  # still counted on the edge address
+
+    def test_a_missing_header_falls_back_to_the_hop(self):
+        self.use_up(self.EDGE, None)
+        self.assertEqual(self.post(self.EDGE).status_code, 429)
+
+    def test_the_429_body_and_retry_after_are_unchanged(self):
+        self.use_up(self.EDGE, "198.51.100.5")
+        response = self.post(self.EDGE, "198.51.100.5")
+        self.assertEqual(response.status_code, 429)
+        error = response.json()["error"]
+        self.assertEqual(error["code"], "RATE_LIMITED")
+        self.assertIn("Try again in", error["message"])
+        self.assertGreater(int(response["Retry-After"]), 0)
+
+    def test_the_ranges_in_settings_include_the_observed_edge_address(self):
+        from django.conf import settings
+        import ipaddress
+
+        networks = [ipaddress.ip_network(r) for r in settings.CLOUDFLARE_IP_RANGES]
+        self.assertEqual(len(networks), 22)
+        self.assertTrue(any(ipaddress.ip_address("172.69.242.1") in n for n in networks))
+        self.assertFalse(any(ipaddress.ip_address("203.0.113.7") in n for n in networks))
