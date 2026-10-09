@@ -305,7 +305,7 @@ The response carries a `Retry-After` header (seconds), which CORS exposes to the
 - `POST /api/plan/` (the only throttled endpoint) allows **15 requests per hour** per client address, set by `PLAN_THROTTLE_RATE`. Each plan spends OpenRouteService free-tier quota.
 - **Which address is counted.** The app sits behind the host's proxy and Cloudflare. If the proxy hop that reaches the app (the last entry in `X-Forwarded-For` when `THROTTLE_NUM_PROXIES` is 1) is inside Cloudflare's published address ranges, the visitor's own address is read from the `CF-Connecting-IP` header (it must be a single valid IPv4 or IPv6 address). Otherwise the proxy hop itself is counted and the header is ignored, because anyone could forge it. The Cloudflare ranges are a constant in `backend/backend/settings.py`, copied from cloudflare.com/ips-v4 and /ips-v6 on 2026-10-07; they are not refreshed automatically.
 - The throttle counts are kept in the app's memory, so they reset when the container restarts.
-- **What is verified.** The behaviour is covered by automated tests with mocked headers. It has **not** been verified against live traffic after the final change.
+- **What is verified.** The automated tests use mocked headers. On 2026-10-09 a real request on the live site logged `source=cf-connecting-ip` with the visitor address masked, which shows that the visitor address behind Cloudflare is being used.
 - Logs: each plan request logs the number of `X-Forwarded-For` entries, the counted address with its last part masked (IPv4: first three parts; IPv6: first three groups) and the source used. Full addresses are never logged.
 
 ---
