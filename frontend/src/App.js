@@ -21,7 +21,7 @@ const WAKE_NOTICE_DELAY_MS = 15000;
 // Cold-start handling for the free-tier backend (it boots in roughly a minute after sleeping).
 // Per-attempt timeout: see requestTimeoutMs (30 s while the server may be asleep, 65 s once it has answered).
 const RETRY_DELAY_MS = 10000;
-const MAX_ATTEMPTS = 7; // first try + 6 retries, ~60s of waiting in total
+const MAX_ATTEMPTS = 7; // first try + 6 retries; worst case for a sleeping server is 7 x 30 s + 6 x 10 s = 270 s
 
 // Connectivity-class failure (network error, timeout, platform "waking up" page); safe to retry.
 class RetryableError extends Error {}
