@@ -16,9 +16,7 @@ A full-stack **Hours of Service (HOS)** trip planner for commercial drivers. Ent
 
 ## Screenshots
 
-| Desktop | Mobile |
-|---------|--------|
-| ![Desktop view of a planned trip](docs/screenshots/desktop.png) | ![Mobile view of a planned trip](docs/screenshots/mobile.png) |
+![Desktop view of a planned trip](docs/screenshots/desktop.png)
 
 ---
 
